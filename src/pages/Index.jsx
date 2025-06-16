@@ -1,5 +1,7 @@
 
 import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Header from '../components/Header';
 import Hero from '../components/Hero';
 import Services from '../components/Services';
 import Footer from '../components/Footer';
@@ -10,7 +12,8 @@ import CorporateManager from '../components/CorporateManager';
 
 const Index = () => {
   return (
-    <>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
+      <Header />
       <main>
         <Hero />
         <Services />
@@ -22,7 +25,7 @@ const Index = () => {
         </div>
       </main>
       <Footer />
-    </>
+    </div>
   );
 };
 
