@@ -2,14 +2,34 @@
 import React, { useState } from 'react';
 import { Menu, X, Scale, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [language, setLanguage] = useState('hi');
+  const { language, toggleLanguage } = useLanguage();
 
-  const toggleLanguage = () => {
-    setLanguage(language === 'hi' ? 'en' : 'hi');
+  const text = {
+    hi: {
+      title: 'ग्रामीण न्याय',
+      services: 'सेवाएं',
+      upload: 'दस्तावेज़ अपलोड',
+      qa: 'प्रश्न-उत्तर',
+      lawyers: 'वकील खोजें',
+      corporate: 'कॉर्पोरेट',
+      switchLang: 'English'
+    },
+    en: {
+      title: 'Rural Justice',
+      services: 'Services',
+      upload: 'Upload Documents',
+      qa: 'Q&A',
+      lawyers: 'Find Lawyers',
+      corporate: 'Corporate',
+      switchLang: 'हिंदी'
+    }
   };
+
+  const currentText = text[language];
 
   return (
     <header className="bg-white shadow-lg sticky top-0 z-50">
@@ -18,25 +38,25 @@ const Header = () => {
           <div className="flex items-center space-x-2">
             <Scale className="h-8 w-8 text-blue-600" />
             <h1 className="text-2xl font-bold text-gray-900">
-              {language === 'hi' ? 'ग्रामीण न्याय' : 'Rural Justice'}
+              {currentText.title}
             </h1>
           </div>
 
           <nav className="hidden md:flex space-x-8">
             <a href="#services" className="text-gray-700 hover:text-blue-600 transition-colors">
-              {language === 'hi' ? 'सेवाएं' : 'Services'}
+              {currentText.services}
             </a>
             <a href="#upload" className="text-gray-700 hover:text-blue-600 transition-colors">
-              {language === 'hi' ? 'दस्तावेज़ अपलोड' : 'Upload Documents'}
+              {currentText.upload}
             </a>
             <a href="#qa" className="text-gray-700 hover:text-blue-600 transition-colors">
-              {language === 'hi' ? 'प्रश्न-उत्तर' : 'Q&A'}
+              {currentText.qa}
             </a>
             <a href="#lawyers" className="text-gray-700 hover:text-blue-600 transition-colors">
-              {language === 'hi' ? 'वकील खोजें' : 'Find Lawyers'}
+              {currentText.lawyers}
             </a>
             <a href="#corporate" className="text-gray-700 hover:text-blue-600 transition-colors">
-              {language === 'hi' ? 'कॉर्पोरेट' : 'Corporate'}
+              {currentText.corporate}
             </a>
           </nav>
 
@@ -48,7 +68,7 @@ const Header = () => {
               className="hidden md:flex items-center space-x-2"
             >
               <Globe className="h-4 w-4" />
-              <span>{language === 'hi' ? 'English' : 'हिंदी'}</span>
+              <span>{currentText.switchLang}</span>
             </Button>
 
             <Button
@@ -66,19 +86,19 @@ const Header = () => {
           <div className="md:hidden pb-4 border-t border-gray-200">
             <nav className="flex flex-col space-y-4 pt-4">
               <a href="#services" className="text-gray-700 hover:text-blue-600 transition-colors">
-                {language === 'hi' ? 'सेवाएं' : 'Services'}
+                {currentText.services}
               </a>
               <a href="#upload" className="text-gray-700 hover:text-blue-600 transition-colors">
-                {language === 'hi' ? 'दस्तावेज़ अपलोड' : 'Upload Documents'}
+                {currentText.upload}
               </a>
               <a href="#qa" className="text-gray-700 hover:text-blue-600 transition-colors">
-                {language === 'hi' ? 'प्रश्न-उत्तर' : 'Q&A'}
+                {currentText.qa}
               </a>
               <a href="#lawyers" className="text-gray-700 hover:text-blue-600 transition-colors">
-                {language === 'hi' ? 'वकील खोजें' : 'Find Lawyers'}
+                {currentText.lawyers}
               </a>
               <a href="#corporate" className="text-gray-700 hover:text-blue-600 transition-colors">
-                {language === 'hi' ? 'कॉर्पोरेट' : 'Corporate'}
+                {currentText.corporate}
               </a>
               <Button
                 variant="outline"
@@ -87,7 +107,7 @@ const Header = () => {
                 className="flex items-center space-x-2 w-fit"
               >
                 <Globe className="h-4 w-4" />
-                <span>{language === 'hi' ? 'English' : 'हिंदी'}</span>
+                <span>{currentText.switchLang}</span>
               </Button>
             </nav>
           </div>
