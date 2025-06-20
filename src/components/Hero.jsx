@@ -10,9 +10,9 @@ const Hero = () => {
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-            <span className="text-blue-600">ग्रामीण न्याय</span>
+            <span className="text-blue-600">न्याय</span>
             <br />
-            <span className="text-2xl md:text-4xl text-gray-700">Rural Legal Aid</span>
+            <span className="text-2xl md:text-4xl text-gray-700">Legal Aid</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
             गांव के लोगों के लिए कानूनी सहायता। दस्तावेज़ अपलोड करें, सवाल पूछें, और बेहतरीन वकील खोजें।

@@ -18,7 +18,7 @@ const Header = () => {
           <div className="flex items-center space-x-2">
             <Scale className="h-8 w-8 text-blue-600" />
             <h1 className="text-2xl font-bold text-gray-900">
-              {language === 'hi' ? 'ग्रामीण न्याय' : 'Rural Justice'}
+              {language === 'hi' ? ' न्याय' : 'Justice'}
             </h1>
           </div>
 
