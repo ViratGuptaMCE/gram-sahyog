@@ -12,7 +12,9 @@
 # from azure.ai.inference import ChatCompletionsClient, EmbeddingsClient
 # from azure.ai.inference.models import SystemMessage, UserMessage
 # from azure.core.credentials import AzureKeyCredential
-
+import pandas as pd
+import numpy as np
+import json
 # app = FastAPI()
 
 # # Set up logging
@@ -278,11 +280,10 @@ from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import FAISS
 from deep_translator import GoogleTranslator
-import os
 import io
 import logging
 import google.generativeai as genai
-from typing import List, Union
+from typing import List
 from langchain_core.embeddings import Embeddings
 
 app = FastAPI()
@@ -539,3 +540,29 @@ async def process_pdf(
 #     except Exception as e:
 #         logger.error(f"Error processing request: {e}")
 #         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
+@app.post("/get_lawyers/")
+async def get_lawyers(
+    domain: str = Form(...),
+    location: str = Form(...),
+    experience: int = Form(...)
+):
+    try:
+        location = location.strip().title()
+        domain = domain.strip().title()
+        df = pd.read_csv('lawyer.csv')
+        df['Experience_Years'] = df['Experience'].str.extract(r'(\d+)').astype(int)
+
+        filtered = df[
+            (df['City'] == location) &
+            (df['Specialization'] == domain) &
+            (df['Experience_Years'] >= experience)
+        ]
+
+        print(filtered)
+        response_data = json.loads(filtered.to_json(orient='records'))
+        return JSONResponse(content={'lawyers': response_data})
+    except Exception as e:
+        print("Error Occured")
+        return JSONResponse(content={'error': str(e)}, status_code=500)

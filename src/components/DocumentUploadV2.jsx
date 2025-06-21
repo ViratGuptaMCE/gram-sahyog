@@ -1,5 +1,5 @@
 // src/components/DocumentUploadV2.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Upload, FileText, CheckCircle } from "lucide-react";
+import { Upload, FileText, CheckCircle, Volume2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const DocumentUploadV2 = () => {
@@ -19,7 +19,24 @@ const DocumentUploadV2 = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState("");
   const [progress, setProgress] = useState(0);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [voices, setVoices] = useState([]);
   const { toast } = useToast();
+
+  // Load available voices
+  useEffect(() => {
+    const loadVoices = () => {
+      const availableVoices = window.speechSynthesis.getVoices();
+      setVoices(availableVoices);
+    };
+
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+
+    return () => {
+      window.speechSynthesis.onvoiceschanged = null;
+    };
+  }, []);
 
   const handleFileUpload = (event) => {
     const selectedFile = event.target.files?.[0];
@@ -97,6 +114,45 @@ const DocumentUploadV2 = () => {
     }
   };
 
+  const readAloud = () => {
+    if (!analysis) return;
+
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(analysis);
+
+    // Try to find a Hindi voice, fallback to default
+    const hindiVoice = voices.find(
+      (voice) => voice.lang.includes("hi") || voice.name.includes("Hindi")
+    );
+
+    if (hindiVoice) {
+      utterance.voice = hindiVoice;
+      utterance.lang = "hi-IN"; // Hindi language code
+    } else {
+      console.warn("No Hindi voice found, using default voice");
+    }
+
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    window.speechSynthesis.speak(utterance);
+    setIsSpeaking(true);
+  };
+
+  useEffect(() => {
+    // Clean up speech synthesis when component unmounts
+    return () => {
+      if (isSpeaking) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, [isSpeaking]);
+
   return (
     <section id="upload" className="py-16">
       <div className="max-w-4xl mx-auto">
@@ -160,13 +216,80 @@ const DocumentUploadV2 = () => {
         {analysis && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-green-600">
-                Analysis Complete
-              </CardTitle>
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-green-600">
+                  Analysis Complete
+                </CardTitle>
+                <Button
+                  onClick={readAloud}
+                  variant="ghost"
+                  size="sm"
+                  className="text-gray-600 hover:text-gray-900"
+                  disabled={voices.length === 0}
+                >
+                  <Volume2 className="h-4 w-4 mr-2" />
+                  {isSpeaking ? "Stop" : "Read Aloud"}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="bg-gray-50 p-6 rounded-lg">
-                <div className="whitespace-pre-wrap text-sm">{analysis}</div>
+                {analysis.split("\n\n").map((section, index) => {
+                  // Check if section is a heading
+                  if (section.startsWith("**") && section.endsWith("**")) {
+                    const heading = section.replace(/\*\*/g, "");
+                    return (
+                      <h3
+                        key={index}
+                        className="text-lg font-bold text-gray-900 mt-4 mb-2 border-b pb-2"
+                      >
+                        {heading}
+                      </h3>
+                    );
+                  }
+
+                  // Check if section is a numbered list
+                  if (section.includes("1.") && section.includes("\n2.")) {
+                    return (
+                      <ol
+                        key={index}
+                        className="list-decimal pl-6 space-y-2 my-4"
+                      >
+                        {section
+                          .split("\n")
+                          .filter((item) => item.trim())
+                          .map((item, i) => (
+                            <li key={i} className="text-gray-800">
+                              {item.replace(/^\d+\.\s*/, "")}
+                            </li>
+                          ))}
+                      </ol>
+                    );
+                  }
+
+                  // Check if section is a bulleted list
+                  if (section.includes("- ")) {
+                    return (
+                      <ul key={index} className="list-disc pl-6 space-y-2 my-4">
+                        {section
+                          .split("\n")
+                          .filter((item) => item.trim())
+                          .map((item, i) => (
+                            <li key={i} className="text-gray-800">
+                              {item.replace(/^-\s*/, "")}
+                            </li>
+                          ))}
+                      </ul>
+                    );
+                  }
+
+                  // Regular paragraph
+                  return (
+                    <p key={index} className="text-gray-800 my-3">
+                      {section}
+                    </p>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>

@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Users, Star, Phone, MapPin, Award } from 'lucide-react';
+import Profile from './Profile';
 
 const LawyerMatching = () => {
   const [searchCriteria, setSearchCriteria] = useState({
@@ -15,72 +16,60 @@ const LawyerMatching = () => {
     experience: ''
   });
   const [matchedLawyers, setMatchedLawyers] = useState([]);
+  const [translatedNames, setTranslatedNames] = useState({});
   const [isSearching, setIsSearching] = useState(false);
+  const [selectedLawyer, setSelLawyer] = useState(null);
 
   const domains = [
-    { value: 'civil', label: 'दीवानी कानून / Civil Law' },
-    { value: 'criminal', label: 'आपराधिक कानून / Criminal Law' },
-    { value: 'family', label: 'पारिवारिक कानून / Family Law' },
-    { value: 'property', label: 'संपत्ति कानून / Property Law' },
-    { value: 'labor', label: 'श्रम कानून / Labor Law' },
-    { value: 'consumer', label: 'उपभोक्ता कानून / Consumer Law' }
+    { value: "civil", label: "दीवानी कानून / Civil Law" },
+    { value: "criminal", label: "आपराधिक कानून / Criminal Law" },
+    { value: "family", label: "पारिवारिक कानून / Family Law" },
+    { value: "property", label: "संपत्ति कानून / Property Law" },
+    { value: "Tax", label: "कर कानून / Tax Law" },
+    { value: "Consumer Court", label: "उपभोक्ता कानून / Consumer Law" },
   ];
+  async function translateToHindi(text) {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=hi&dt=t&q=${encodeURIComponent(
+      text
+    )}`;
 
-  const mockLawyers = [
-    {
-      id: 1,
-      name: 'अधिवक्ता राजेश शर्मा',
-      nameEn: 'Advocate Rajesh Sharma',
-      domain: 'संपत्ति कानून विशेषज्ञ',
-      domainEn: 'Property Law Specialist',
-      experience: '15 साल का अनुभव',
-      experienceEn: '15 years experience',
-      rating: 4.8,
-      location: 'दिल्ली / Delhi',
-      phone: '+91-9876543210',
-      specialties: ['भूमि विवाद', 'संपत्ति पंजीकरण', 'वसीयत'],
-      specialtiesEn: ['Land Disputes', 'Property Registration', 'Wills'],
-      fees: '₹2000-5000 प्रति केस'
-    },
-    {
-      id: 2,
-      name: 'अधिवक्ता प्रिया गुप्ता',
-      nameEn: 'Advocate Priya Gupta',
-      domain: 'पारिवारिक कानून विशेषज्ञ',
-      domainEn: 'Family Law Specialist',
-      experience: '12 साल का अनुभव',
-      experienceEn: '12 years experience',
-      rating: 4.9,
-      location: 'मुंबई / Mumbai',
-      phone: '+91-8765432109',
-      specialties: ['तलाक', 'बाल हिरासत', 'गुजारा भत्ता'],
-      specialtiesEn: ['Divorce', 'Child Custody', 'Alimony'],
-      fees: '₹1500-4000 प्रति केस'
-    },
-    {
-      id: 3,
-      name: 'अधिवक्ता अमित पटेल',
-      nameEn: 'Advocate Amit Patel',
-      domain: 'आपराधिक कानून विशेषज्ञ',
-      domainEn: 'Criminal Law Specialist',
-      experience: '18 साल का अनुभव',
-      experienceEn: '18 years experience',
-      rating: 4.7,
-      location: 'अहमदाबाद / Ahmedabad',
-      phone: '+91-7654321098',
-      specialties: ['जमानत', 'अपराधिक मुकदमे', 'साइबर अपराध'],
-      specialtiesEn: ['Bail', 'Criminal Cases', 'Cyber Crime'],
-      fees: '₹3000-8000 प्रति केस'
-    }
-  ];
-
-  const searchLawyers = () => {
+    const res = await fetch(url);
+    const data = await res.json();
+    return data[0][0][0]; // Translated text
+  }
+  const searchLawyers = async () => {
     setIsSearching(true);
-    setTimeout(() => {
-      setMatchedLawyers(mockLawyers);
-      setIsSearching(false);
-    }, 1500);
+    try {
+      const formData = new FormData();
+      formData.append("domain", searchCriteria.domain);
+      formData.append("location", searchCriteria.location);
+      formData.append("experience", searchCriteria.experience);
+
+      const response = await fetch("/api/get_lawyers/", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log(result);
+        setMatchedLawyers(result.lawyers);
+        const translations = {};
+        for (const lawyer of result.lawyers) {
+          translations[lawyer.Name] = await translateToHindi(lawyer.Name);
+        }
+        setTranslatedNames(translations);
+      } else {
+        console.error("Failed to fetch lawyers");
+        setMatchedLawyers([]);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      setMatchedLawyers([]);
+    }
+    setIsSearching(false);
   };
+  
 
   return (
     <section id="lawyers" className="py-16">
@@ -108,7 +97,11 @@ const LawyerMatching = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="domain">कानून का क्षेत्र / Legal Domain</Label>
-                <Select onValueChange={(value) => setSearchCriteria({...searchCriteria, domain: value})}>
+                <Select
+                  onValueChange={(value) =>
+                    setSearchCriteria({ ...searchCriteria, domain: value })
+                  }
+                >
                   <SelectTrigger className="mt-2">
                     <SelectValue placeholder="क्षेत्र चुनें / Select Domain" />
                   </SelectTrigger>
@@ -128,22 +121,33 @@ const LawyerMatching = () => {
                   id="location"
                   placeholder="शहर का नाम / City Name"
                   value={searchCriteria.location}
-                  onChange={(e) => setSearchCriteria({...searchCriteria, location: e.target.value})}
+                  onChange={(e) =>
+                    setSearchCriteria({
+                      ...searchCriteria,
+                      location: e.target.value,
+                    })
+                  }
                   className="mt-2"
                 />
               </div>
 
               <div>
-                <Label htmlFor="experience">न्यूनतम अनुभव / Minimum Experience</Label>
-                <Select onValueChange={(value) => setSearchCriteria({...searchCriteria, experience: value})}>
+                <Label htmlFor="experience">
+                  न्यूनतम अनुभव / Minimum Experience
+                </Label>
+                <Select
+                  onValueChange={(value) =>
+                    setSearchCriteria({ ...searchCriteria, experience: value })
+                  }
+                >
                   <SelectTrigger className="mt-2">
                     <SelectValue placeholder="अनुभव चुनें / Select Experience" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="0-5">0-5 साल / years</SelectItem>
-                    <SelectItem value="5-10">5-10 साल / years</SelectItem>
-                    <SelectItem value="10-15">10-15 साल / years</SelectItem>
-                    <SelectItem value="15+">15+ साल / years</SelectItem>
+                    <SelectItem value="0">0-5 साल / years</SelectItem>
+                    <SelectItem value="5">5-10 साल / years</SelectItem>
+                    <SelectItem value="10">10-15 साल / years</SelectItem>
+                    <SelectItem value="15">15+ साल / years</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -155,7 +159,9 @@ const LawyerMatching = () => {
               className="w-full"
               size="lg"
             >
-              {isSearching ? 'वकील खोजे जा रहे हैं... / Searching Lawyers...' : 'वकील खोजें / Search Lawyers'}
+              {isSearching
+                ? "वकील खोजे जा रहे हैं... / Searching Lawyers..."
+                : "वकील खोजें / Search Lawyers"}
             </Button>
           </CardContent>
         </Card>
@@ -165,61 +171,59 @@ const LawyerMatching = () => {
             <h3 className="text-2xl font-bold text-gray-900 mb-6">
               मिलान करने वाले वकील / Matched Lawyers ({matchedLawyers.length})
             </h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {matchedLawyers.map((lawyer) => (
-                <Card key={lawyer.id} className="hover:shadow-lg transition-shadow">
+              {matchedLawyers.map((lawyer, idx) => (
+                <Card key={idx} className="hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <div className="flex items-center justify-between">
+                      <div className="photo p-5 rounded-full overflow-hidden">
+                        <img
+                          src={lawyer.Image_Url}
+                          alt="photo"
+                          width={50}
+                          height={50}
+                        />
+                      </div>
                       <div>
-                        <CardTitle className="text-lg">{lawyer.name}</CardTitle>
-                        <CardDescription className="text-sm">{lawyer.nameEn}</CardDescription>
+                        <CardTitle className="text-lg">{lawyer.Name}</CardTitle>
+                        <CardDescription className="text-sm">
+                          {translatedNames[lawyer.Name] ||
+                            "Loading translation..."}
+                        </CardDescription>
                       </div>
                       <div className="flex items-center space-x-1">
                         <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                        <span className="text-sm font-semibold">{lawyer.rating}</span>
+                        <span className="text-sm font-semibold">
+                          {lawyer.Rating}
+                        </span>
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
                       <Badge variant="secondary" className="mb-2">
-                        {lawyer.domain}
+                        {lawyer.Specialization}
                       </Badge>
-                      <p className="text-sm text-gray-600">{lawyer.domainEn}</p>
                     </div>
 
                     <div className="flex items-center space-x-2 text-sm text-gray-600">
                       <Award className="h-4 w-4" />
-                      <span>{lawyer.experience}</span>
+                      <span>{lawyer.Experience}</span>
                     </div>
 
                     <div className="flex items-center space-x-2 text-sm text-gray-600">
                       <MapPin className="h-4 w-4" />
-                      <span>{lawyer.location}</span>
-                    </div>
-
-                    <div>
-                      <h4 className="font-semibold text-sm mb-2">विशेषताएं / Specialties:</h4>
-                      <div className="flex flex-wrap gap-1">
-                        {lawyer.specialties.map((specialty, idx) => (
-                          <Badge key={idx} variant="outline" className="text-xs">
-                            {specialty}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="text-sm">
-                      <strong>फीस / Fees:</strong> {lawyer.fees}
+                      <span>{lawyer.Location}</span>
                     </div>
 
                     <div className="space-y-2 pt-4">
                       <Button className="w-full" size="sm">
-                        <Phone className="h-4 w-4 mr-2" />
-                        संपर्क करें / Contact
+                        <a href="https://www.chatbase.co/chatbot-iframe/0CXRULDX-IJ6GaESy_Wy9">
+                          संपर्क करें / Contact
+                        </a>
                       </Button>
-                      <Button variant="outline" className="w-full" size="sm">
+                      <Button variant="outline" className="w-full" size="sm" onClick={() => setSelLawyer(lawyer)}>
                         प्रोफाइल देखें / View Profile
                       </Button>
                     </div>
@@ -230,6 +234,7 @@ const LawyerMatching = () => {
           </div>
         )}
       </div>
+      {selectedLawyer && <Profile {...selectedLawyer} onClose={()=> setSelLawyer(null)} />}
     </section>
   );
 };
