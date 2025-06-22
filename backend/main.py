@@ -13,7 +13,6 @@
 # from azure.ai.inference.models import SystemMessage, UserMessage
 # from azure.core.credentials import AzureKeyCredential
 import pandas as pd
-import numpy as np
 import json
 # app = FastAPI()
 
@@ -272,6 +271,10 @@ import json
 #         logger.exception("Processing failed")
 #         raise HTTPException(status_code=500, detail=str(e))
 
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from googletrans import Translator, LANGUAGES
+from typing import Optional
 
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -282,9 +285,15 @@ from langchain.vectorstores import FAISS
 from deep_translator import GoogleTranslator
 import io
 import logging
+import os
 import google.generativeai as genai
 from typing import List
 from langchain_core.embeddings import Embeddings
+from langchain.text_splitter import CharacterTextSplitter
+from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
+from langchain.chains import RetrievalQA
+from langchain.docstore.document import Document
+
 
 app = FastAPI()
 
@@ -293,7 +302,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Configure Gemini
-GEMINI_API_KEY ="AIzaSyCd8K77ZBX48K1lSDl0Tok60YfHQZ8K2-0"  # Get from: https://aistudio.google.com/app/apikey
+
+os.environ["GEMINI_API_KEY"] = "AIzaSyD__GHOuZ5dGpz0Wi8e4Jrx99DxzbVcevk"
+GEMINI_API_KEY  = os.getenv("GEMINI_API_KEY")
+print(GEMINI_API_KEY)
 if not GEMINI_API_KEY:
     raise ValueError("Please set GEMINI_API_KEY environment variable")
 
@@ -350,6 +362,7 @@ class GeminiWrapper:
             context = "\n".join(input_documents)
             prompt = f"""
             **Role:** You are a legal assistant. Answer based ONLY on the given context.
+            Answer should be well in points and proper format
             
             **Context:**
             {context}
@@ -418,23 +431,46 @@ async def process_pdf(
         logger.info("Answer generated")
 
         # Handle translation
-        if translation_language=="en":
-            logger.info(f"Translating to {translation_language}")
-            try:
-                translated_answer = GoogleTranslator(
-                    source='auto', 
-                    target=translation_language
-                ).translate(answer)
-                logger.info("Translation successful")
-                return JSONResponse(content={
-                    "answer": answer,
-                    "translated_answer": translated_answer
-                })
-            except Exception as e:
-                logger.error(f"Translation error: {e}")
-                return JSONResponse(content={"answer": answer, "error": str(e)})
+        # if translation_language:
+        #     logger.info(f"Translating to {translation_language}")
+        #     try:
+        #         translated_answer = GoogleTranslator(
+        #             source='auto', 
+        #             target=translation_language
+        #         ).translate(answer)
+        #         logger.info("Translation successful")
+        #         return JSONResponse(content={
+        #             "answer": answer,
+        #             "translated_answer": translated_answer
+        #         })
+        #     except Exception as e:
+        #         logger.error(f"Translation error: {e}")
+        #         return JSONResponse(content={"answer": answer, "error": str(e)})
+            
+        # Lawyer Given
+        os.environ["GOOGLE_API_KEY"] = "AIzaSyD__GHOuZ5dGpz0Wi8e4Jrx99DxzbVcevk"
+        df = pd.read_csv("lawyer.csv")
+        text = "\n".join(df.astype(str).fillna("").agg(" ".join, axis=1))
+        text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        texts = text_splitter.split_text(text)
+        documents = [Document(page_content=t) for t in texts]
+        embedding_model = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+        vectorstore = FAISS.from_documents(documents, embedding_model)
+
+
+        llm = ChatGoogleGenerativeAI(model="models/gemini-2.5-flash", temperature=0.2)
+        qa_chain = RetrievalQA.from_chain_type(llm=llm, retriever=vectorstore.as_retriever())
         
-        return JSONResponse(content={"answer": answer})
+        query = "provide one best lawyer for this case , do not answer anything except the name , the response should be strictly of format 'name = NAME_OF_LAWYER' nothing else : " + answer[0:2000]
+        answer2 = qa_chain.invoke({"query": query})
+
+        print("Bot:", answer2)
+
+        lawName = answer2['result'].split('=')[1].strip() 
+        lawNameObj = df[df['Name']==lawName]
+        lawResp = json.loads(lawNameObj.to_json(orient='records'))
+        print(lawResp)
+        return JSONResponse(content={"answer": answer, "lawyer" :lawResp[0] })
 
     except HTTPException:
         raise
@@ -566,3 +602,47 @@ async def get_lawyers(
     except Exception as e:
         print("Error Occured")
         return JSONResponse(content={'error': str(e)}, status_code=500)
+
+
+class TranslationRequest(BaseModel):
+    text: str
+    target_lang: str  # language code like 'hi', 'en'
+
+class TranslationResponse(BaseModel):
+    original_text: str
+    translated_text: str
+    source_lang: str
+    target_lang: str
+
+# Initialize translator
+translator = Translator()
+
+@app.post("/translate", response_model=TranslationResponse)
+async def translate_text(request: TranslationRequest):
+    try:
+        # Validate target language
+        if request.target_lang not in LANGUAGES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported language code. Supported codes: {list(LANGUAGES.keys())}"
+            )
+
+        # Perform translation (synchronous operation)
+        translation = await translator.translate(
+            request.text,
+            dest=request.target_lang
+        )
+
+        return {
+            "original_text": request.text,
+            "translated_text": translation.text,
+            "source_lang": translation.src,
+            "target_lang": translation.dest
+        }
+
+    except Exception as e:
+        logging.error(f"Translation error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Translation failed: {str(e)}"
+        )
