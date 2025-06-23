@@ -353,6 +353,20 @@ class GeminiEmbeddings(Embeddings):
 gemini_embeddings = GeminiEmbeddings()
 gemini_chat = genai.GenerativeModel('gemini-2.5-flash')
 
+
+os.environ["GOOGLE_API_KEY"] = "AIzaSyD__GHOuZ5dGpz0Wi8e4Jrx99DxzbVcevk"
+df = pd.read_csv("lawyer.csv")
+text = "\n".join(df.astype(str).fillna("").agg(" ".join, axis=1))
+text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+texts = text_splitter.split_text(text)
+documents = [Document(page_content=t) for t in texts]
+embedding_model = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+vectorstore = FAISS.from_documents(documents, embedding_model)
+
+
+llm = ChatGoogleGenerativeAI(model="models/gemini-2.5-flash", temperature=0.2)
+qa_chain = RetrievalQA.from_chain_type(llm=llm, retriever=vectorstore.as_retriever())
+
 class GeminiWrapper:
     def __init__(self, model):
         self.model = model
@@ -377,6 +391,21 @@ class GeminiWrapper:
         except Exception as e:
             logger.error(f"Gemini Error: {e}")
             raise "Failed to generate answer. Please try again."
+        
+    def ans(self,question :str) -> str:
+        try :
+            prompt = f"""
+            **Role:** You are a legal assistant. Provide Legal response ONLY.
+            Answer should be well in points and proper format
+            
+            **Question:**
+            {question}
+            """
+            response = self.model.generate_content(prompt)
+            return response.text
+        except Exception as e:
+            logger.error(f"Gemini Error : {e}")
+            raise HTTPException(status_code = 500,detail = "Failed to answer question")
 
 # Add CORS middleware
 app.add_middleware(
@@ -448,18 +477,18 @@ async def process_pdf(
         #         return JSONResponse(content={"answer": answer, "error": str(e)})
             
         # Lawyer Given
-        os.environ["GOOGLE_API_KEY"] = "AIzaSyD__GHOuZ5dGpz0Wi8e4Jrx99DxzbVcevk"
-        df = pd.read_csv("lawyer.csv")
-        text = "\n".join(df.astype(str).fillna("").agg(" ".join, axis=1))
-        text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-        texts = text_splitter.split_text(text)
-        documents = [Document(page_content=t) for t in texts]
-        embedding_model = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-        vectorstore = FAISS.from_documents(documents, embedding_model)
+        # os.environ["GOOGLE_API_KEY"] = "AIzaSyD__GHOuZ5dGpz0Wi8e4Jrx99DxzbVcevk"
+        # df = pd.read_csv("lawyer.csv")
+        # text = "\n".join(df.astype(str).fillna("").agg(" ".join, axis=1))
+        # text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        # texts = text_splitter.split_text(text)
+        # documents = [Document(page_content=t) for t in texts]
+        # embedding_model = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+        # vectorstore = FAISS.from_documents(documents, embedding_model)
 
 
-        llm = ChatGoogleGenerativeAI(model="models/gemini-2.5-flash", temperature=0.2)
-        qa_chain = RetrievalQA.from_chain_type(llm=llm, retriever=vectorstore.as_retriever())
+        # llm = ChatGoogleGenerativeAI(model="models/gemini-2.5-flash", temperature=0.2)
+        # qa_chain = RetrievalQA.from_chain_type(llm=llm, retriever=vectorstore.as_retriever())
         
         query = "provide one best lawyer for this case , do not answer anything except the name , the response should be strictly of format 'name = NAME_OF_LAWYER' nothing else : " + answer[0:2000]
         answer2 = qa_chain.invoke({"query": query})
@@ -646,3 +675,20 @@ async def translate_text(request: TranslationRequest):
             status_code=500,
             detail=f"Translation failed: {str(e)}"
         )
+    
+
+class QuestionRequest(BaseModel):
+    question: str
+
+@app.post("/getanswer")
+async def getAnswer(request: QuestionRequest):
+    try:
+        llm_chain = GeminiWrapper(gemini_chat)
+        answer = llm_chain.ans(
+            question= request.question
+        )
+        return {"answer": answer}
+    except Exception as e:
+        logging.error(f"Error getting answer: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+    

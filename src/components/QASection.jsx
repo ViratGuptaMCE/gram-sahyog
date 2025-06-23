@@ -1,15 +1,57 @@
+import React, { useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { MessageSquare, Send, User, Bot } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { MessageSquare, Send, User, Bot } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+const formatLegalResponse = (text) => {
+  // Split the text into sections
+  const sections = text.split("### ").filter((section) => section.trim());
+
+  return sections.map((section, index) => {
+    const [heading, ...content] = section
+      .split("\n")
+      .filter((line) => line.trim());
+    const contentText = content.join("\n");
+
+    return (
+      <div key={index} className="mb-6">
+        <h3 className="text-xl font-bold text-gray-800 mb-3">{heading}</h3>
+        {contentText.split("\n\n").map((paragraph, pIndex) => {
+          // Format bold text within paragraphs
+          const formattedParagraph = paragraph
+            .split("**")
+            .map((part, partIndex) => {
+              return partIndex % 2 === 1 ? (
+                <span key={partIndex} className="font-bold">
+                  {part}
+                </span>
+              ) : (
+                part
+              );
+            });
+
+          return (
+            <p key={pIndex} className="mb-3 text-gray-700">
+              {formattedParagraph}
+            </p>
+          );
+        })}
+      </div>
+    );
+  });
+};
 
 const QASection = () => {
-  const [question, setQuestion] = useState('');
+  const [question, setQuestion] = useState("");
   const [conversations, setConversations] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -19,51 +61,49 @@ const QASection = () => {
 
     setIsLoading(true);
     const currentQuestion = question;
-    setQuestion('');
+    setQuestion("");
 
-    // Simulate AI response
-    setTimeout(() => {
-      const mockAnswer = `
-कानूनी सलाह / Legal Advice:
+    try {
+      const response = await fetch("/api/getanswer", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          question: currentQuestion,
+        }),
+      });
 
-प्रश्न के संबंध में:
-आपके द्वारा पूछे गए प्रश्न "${currentQuestion}" के लिए निम्नलिखित कानूनी सलाह है:
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
 
-📚 कानूनी स्थिति:
-• भारतीय कानून के अनुसार यह मामला संविधान के अनुच्छेद के तहत आता है
-• इस प्रकार के मामलों में सामान्यतः निम्नलिखित प्रक्रिया अपनाई जाती है
-
-⚖️ कानूनी कार्यवाही:
-• सबसे पहले संबंधित दस्तावेज़ इकट्ठे करें
-• स्थानीय कानूनी सहायता केंद्र से संपर्क करें
-• यदि आवश्यक हो तो न्यायालय में याचिका दायर करें
-
-📋 आवश्यक दस्तावेज़:
-• पहचान प्रमाण पत्र
-• पता प्रमाण पत्र
-• संबंधित केस से जुड़े दस्तावेज़
-
-🔔 महत्वपूर्ण सुझाव:
-यह केवल सामान्य कानूनी जानकारी है। विस्तृत कानूनी सलाह के लिए कृपया किसी योग्य वकील से मिलें।
-
-Legal Advice in English:
-For the question "${currentQuestion}", please consult with a qualified lawyer for specific legal advice. This is general information only.
-      `;
+      const data = await response.json();
 
       const newConversation = {
         id: Date.now(),
         question: currentQuestion,
-        answer: mockAnswer
+        answer: data.answer,
       };
 
-      setConversations(prev => [newConversation, ...prev]);
-      setIsLoading(false);
-      
+      setConversations((prev) => [newConversation, ...prev]);
+
       toast({
         title: "उत्तर मिल गया / Answer Received",
-        description: "आपके प्रश्न का कानूनी उत्तर तैयार है / Legal answer for your question is ready",
+        description:
+          "आपके प्रश्न का कानूनी उत्तर तैयार है / Legal answer for your question is ready",
       });
-    }, 2000);
+    } catch (error) {
+      console.error("Error fetching answer:", error);
+      toast({
+        title: "त्रुटि / Error",
+        description:
+          "उत्तर प्राप्त करने में समस्या हुई / Problem getting answer",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -99,7 +139,7 @@ For the question "${currentQuestion}", please consult with a qualified lawyer fo
                 className="mt-2 min-h-[100px]"
               />
             </div>
-            
+
             <Button
               onClick={handleSubmitQuestion}
               disabled={!question.trim() || isLoading}
@@ -126,17 +166,25 @@ For the question "${currentQuestion}", please consult with a qualified lawyer fo
                   <div className="flex items-start space-x-3">
                     <User className="h-8 w-8 text-blue-600 mt-1" />
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 mb-2">आपका प्रश्न / Your Question:</h4>
-                      <p className="text-gray-700 bg-blue-50 p-3 rounded-lg">{conv.question}</p>
+                      <h4 className="font-semibold text-gray-900 mb-2">
+                        आपका प्रश्न / Your Question:
+                      </h4>
+                      <p className="text-gray-700 bg-blue-50 p-3 rounded-lg">
+                        {conv.question}
+                      </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start space-x-3">
                     <Bot className="h-8 w-8 text-green-600 mt-1" />
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 mb-2">कानूनी सलाह / Legal Advice:</h4>
+                      <h4 className="font-semibold text-gray-900 mb-2">
+                        कानूनी सलाह / Legal Advice:
+                      </h4>
                       <div className="text-gray-700 bg-green-50 p-4 rounded-lg">
-                        <pre className="whitespace-pre-wrap text-sm">{conv.answer}</pre>
+                        <pre className="whitespace-pre-wrap text-sm">
+                          {formatLegalResponse(conv.answer)}
+                        </pre>
                       </div>
                     </div>
                   </div>
