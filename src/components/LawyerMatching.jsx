@@ -46,7 +46,7 @@ const LawyerMatching = () => {
       formData.append("experience", searchCriteria.experience);
 
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/get_lawyers/`,
+        `/api/get_lawyers/`,
         {
           method: "POST",
           body: formData,
