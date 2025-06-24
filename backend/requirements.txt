@@ -6,3 +6,13 @@ langchain
 openai
 deep-translator
 reportlab
+pandas
+json
+googletrans==4.0.0-rc1
+typing
+io
+logging
+google-generativeai
+faiss-cpu
+langchain-google-genai
+starlette

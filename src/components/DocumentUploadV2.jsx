@@ -82,7 +82,7 @@ const DocumentUploadV2 = () => {
           clearInterval(progressInterval);
           return 90;
         }
-        return prev + 10;
+        return prev + 2;
       });
     }, 500);
 
