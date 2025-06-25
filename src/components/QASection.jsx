@@ -64,15 +64,18 @@ const QASection = () => {
     setQuestion("");
 
     try {
-      const response = await fetch("/api/getanswer", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          question: currentQuestion,
-        }),
-      });
+      const response = await fetch(
+        "https://gram-sahyog.onrender.com/getanswer",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            question: currentQuestion,
+          }),
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Network response was not ok");

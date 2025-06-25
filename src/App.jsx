@@ -9,7 +9,7 @@ import NotFound from "./pages/NotFound";
 import Patent from "./pages/Patent";
 
 const queryClient = new QueryClient();
-
+ 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
