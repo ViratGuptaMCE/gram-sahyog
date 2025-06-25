@@ -95,7 +95,7 @@ const DocumentUploadV2 = () => {
       );
       formData.append("translation_language", language); // Send current language preference
 
-      const response = await fetch("/api/process_pdf/", {
+      const response = await fetch("https://gram-sahyog.onrender.com/process_pdf/", {
         method: "POST",
         body: formData,
       });
@@ -133,7 +133,7 @@ const DocumentUploadV2 = () => {
       // Switch to Hindi - we need to translate the existing analysis
       try {
         setIsAnalyzing(true);
-        const response = await fetch("/api/translate", {
+        const response = await fetch("https://gram-sahyog.onrender.com/translate", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
