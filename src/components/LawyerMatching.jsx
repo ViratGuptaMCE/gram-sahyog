@@ -45,10 +45,13 @@ const LawyerMatching = () => {
       formData.append("location", searchCriteria.location);
       formData.append("experience", searchCriteria.experience);
 
-      const response = await fetch("/api/get_lawyers/", {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch(
+        `/api/get_lawyers/`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
       if (response.ok) {
         const result = await response.json();

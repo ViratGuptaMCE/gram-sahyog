@@ -342,7 +342,7 @@ const DocumentUploadV2 = () => {
                         {parts.map((part, i) =>
                           i % 2 === 1 ? (
                             <span key={i} className="font-bold">
-                              {part}
+                              <br />{part}
                             </span>
                           ) : (
                             part

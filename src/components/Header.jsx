@@ -17,26 +17,49 @@ const Header = () => {
         <div className="flex justify-between items-center py-4">
           <div className="flex items-center space-x-2">
             <Scale className="h-8 w-8 text-blue-600" />
-            <h1 className="text-2xl font-bold text-gray-900">
-              {language === 'hi' ? ' न्याय' : 'Justice'}
-            </h1>
+            <a href="/">
+              <h1 className="text-2xl font-bold text-gray-900">
+                {language === "hi" ? " न्याय" : "Nyay"}
+              </h1>
+            </a>
           </div>
 
           <nav className="hidden md:flex space-x-8">
-            <a href="#services" className="text-gray-700 hover:text-blue-600 transition-colors">
-              {language === 'hi' ? 'सेवाएं' : 'Services'}
+            <a
+              href="#services"
+              className="text-gray-700 hover:text-blue-600 transition-colors"
+            >
+              {language === "hi" ? "सेवाएं" : "Services"}
             </a>
-            <a href="#upload" className="text-gray-700 hover:text-blue-600 transition-colors">
-              {language === 'hi' ? 'दस्तावेज़ अपलोड' : 'Upload Documents'}
+            <a
+              href="#upload"
+              className="text-gray-700 hover:text-blue-600 transition-colors"
+            >
+              {language === "hi" ? "दस्तावेज़ अपलोड" : "Upload Documents"}
             </a>
-            <a href="#qa" className="text-gray-700 hover:text-blue-600 transition-colors">
-              {language === 'hi' ? 'प्रश्न-उत्तर' : 'Q&A'}
+            <a
+              href="#qa"
+              className="text-gray-700 hover:text-blue-600 transition-colors"
+            >
+              {language === "hi" ? "प्रश्न-उत्तर" : "Q&A"}
             </a>
-            <a href="#lawyers" className="text-gray-700 hover:text-blue-600 transition-colors">
-              {language === 'hi' ? 'वकील खोजें' : 'Find Lawyers'}
+            <a
+              href="#lawyers"
+              className="text-gray-700 hover:text-blue-600 transition-colors"
+            >
+              {language === "hi" ? "वकील खोजें" : "Find Lawyers"}
             </a>
-            <a href="#corporate" className="text-gray-700 hover:text-blue-600 transition-colors">
-              {language === 'hi' ? 'कॉर्पोरेट' : 'Corporate'}
+            <a
+              href="#corporate"
+              className="text-gray-700 hover:text-blue-600 transition-colors"
+            >
+              {language === "hi" ? "कॉर्पोरेट" : "Corporate"}
+            </a>
+            <a
+              href="/patent"
+              className="text-gray-700 hover:text-blue-600 transition-colors"
+            >
+              {language === "hi" ? "पेटेंट" : "PATENT"}
             </a>
           </nav>
 
@@ -48,7 +71,7 @@ const Header = () => {
               className="hidden md:flex items-center space-x-2"
             >
               <Globe className="h-4 w-4" />
-              <span>{language === 'hi' ? 'English' : 'हिंदी'}</span>
+              <span>{language === "hi" ? "English" : "हिंदी"}</span>
             </Button>
 
             <Button
@@ -57,7 +80,11 @@ const Header = () => {
               className="md:hidden"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
-              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              {isMenuOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
             </Button>
           </div>
         </div>
@@ -65,20 +92,35 @@ const Header = () => {
         {isMenuOpen && (
           <div className="md:hidden pb-4 border-t border-gray-200">
             <nav className="flex flex-col space-y-4 pt-4">
-              <a href="#services" className="text-gray-700 hover:text-blue-600 transition-colors">
-                {language === 'hi' ? 'सेवाएं' : 'Services'}
+              <a
+                href="#services"
+                className="text-gray-700 hover:text-blue-600 transition-colors"
+              >
+                {language === "hi" ? "सेवाएं" : "Services"}
               </a>
-              <a href="#upload" className="text-gray-700 hover:text-blue-600 transition-colors">
-                {language === 'hi' ? 'दस्तावेज़ अपलोड' : 'Upload Documents'}
+              <a
+                href="#upload"
+                className="text-gray-700 hover:text-blue-600 transition-colors"
+              >
+                {language === "hi" ? "दस्तावेज़ अपलोड" : "Upload Documents"}
               </a>
-              <a href="#qa" className="text-gray-700 hover:text-blue-600 transition-colors">
-                {language === 'hi' ? 'प्रश्न-उत्तर' : 'Q&A'}
+              <a
+                href="#qa"
+                className="text-gray-700 hover:text-blue-600 transition-colors"
+              >
+                {language === "hi" ? "प्रश्न-उत्तर" : "Q&A"}
               </a>
-              <a href="#lawyers" className="text-gray-700 hover:text-blue-600 transition-colors">
-                {language === 'hi' ? 'वकील खोजें' : 'Find Lawyers'}
+              <a
+                href="#lawyers"
+                className="text-gray-700 hover:text-blue-600 transition-colors"
+              >
+                {language === "hi" ? "वकील खोजें" : "Find Lawyers"}
               </a>
-              <a href="#corporate" className="text-gray-700 hover:text-blue-600 transition-colors">
-                {language === 'hi' ? 'कॉर्पोरेट' : 'Corporate'}
+              <a
+                href="#corporate"
+                className="text-gray-700 hover:text-blue-600 transition-colors"
+              >
+                {language === "hi" ? "कॉर्पोरेट" : "Corporate"}
               </a>
               <Button
                 variant="outline"
@@ -87,7 +129,7 @@ const Header = () => {
                 className="flex items-center space-x-2 w-fit"
               >
                 <Globe className="h-4 w-4" />
-                <span>{language === 'hi' ? 'English' : 'हिंदी'}</span>
+                <span>{language === "hi" ? "English" : "हिंदी"}</span>
               </Button>
             </nav>
           </div>
