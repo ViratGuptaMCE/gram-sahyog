@@ -46,7 +46,7 @@ const LawyerMatching = () => {
       formData.append("experience", searchCriteria.experience);
 
       const response = await fetch(
-        `/api/get_lawyers/`,
+        `https://gram-sahyog.onrender.com/get_lawyers/`,
         {
           method: "POST",
           body: formData,
