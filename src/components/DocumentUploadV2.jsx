@@ -77,12 +77,12 @@ const DocumentUploadV2 = () => {
     // Progress simulation
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
-        if (prev >= 90) {
+        if (prev >= 95) {
           // Leave 10% for final processing
           clearInterval(progressInterval);
-          return 90;
+          return 95;
         }
-        return prev + 10;
+        return prev + 2;
       });
     }, 500);
 
@@ -93,9 +93,9 @@ const DocumentUploadV2 = () => {
         "query",
         "Analyze this legal document and provide key points, potential issues, and recommendations"
       );
-      formData.append("translation_language", language); // Send current language preference
+      formData.append("translation_language", language);
 
-      const response = await fetch("/api/process_pdf/", {
+      const response = await fetch("https://gram-sahyog.onrender.com/process_pdf/", {
         method: "POST",
         body: formData,
       });
@@ -133,7 +133,7 @@ const DocumentUploadV2 = () => {
       // Switch to Hindi - we need to translate the existing analysis
       try {
         setIsAnalyzing(true);
-        const response = await fetch("/api/translate", {
+        const response = await fetch("https://gram-sahyog.onrender.com/translate", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
