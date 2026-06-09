@@ -30,8 +30,6 @@ app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Configure Gemini
-os.environ["GEMINI_API_KEY"] = "AIzaSyA7-H_eC0JOK9iQWPmsgDKXR_Ppvw5Ki74"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 print(GEMINI_API_KEY)
 if not GEMINI_API_KEY:
