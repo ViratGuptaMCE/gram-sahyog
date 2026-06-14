@@ -8,7 +8,10 @@ deep-translator
 reportlab
 pandas
 googletrans==4.0.0-rc1
-google-generativeai
-faiss-cpu
-langchain-google-genai
-
+groq
+langchain-groq
+langchain-chroma
+langchain-huggingface
+sentence-transformers
+python-dotenv
+python-multipart

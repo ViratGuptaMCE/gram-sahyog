@@ -1,154 +1,66 @@
-
 import pandas as pd
 import json
+import io
+import os
+import logging
+from typing import List
 
-
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from googletrans import Translator, LANGUAGES
-
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+
 from PyPDF2 import PdfReader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores import FAISS
-import io
-import logging
-import os
-import google.generativeai as genai
-from typing import List
-from langchain_core.embeddings import Embeddings
-from langchain.text_splitter import CharacterTextSplitter
-from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
-from langchain.chains import RetrievalQA
-from langchain.docstore.document import Document
 
-app = FastAPI()
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_chroma import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_groq import ChatGroq
+from langchain_core.documents import Document
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from dotenv import load_dotenv
+from googletrans import Translator, LANGUAGES
+import time
 
-# Set up logging
+# ----------------------------------------------------------------------
+# Setup
+# ----------------------------------------------------------------------
+load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Configure Gemini
-os.environ["GEMINI_API_KEY"] = "AIzaSyA7-H_eC0JOK9iQWPmsgDKXR_Ppvw5Ki74"
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-print(GEMINI_API_KEY)
-if not GEMINI_API_KEY:
-    raise ValueError("Please set GEMINI_API_KEY environment variable")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+if not GROQ_API_KEY:
+    logger.warning("GROQ_API_KEY environment variable not set.")
 
-genai.configure(api_key=GEMINI_API_KEY)
+# ----------------------------------------------------------------------
+# Rate Limiting Engine
+# ----------------------------------------------------------------------
+class TokenRateLimiter:
+    def __init__(self, requests_limit: int, window_seconds: int):
+        self.requests_limit = requests_limit
+        self.window_seconds = window_seconds
+        self.clients = {}  # ip -> list of timestamps
 
-# Initialize lawyer data at startup
-def load_lawyer_data():
-    # Read the CSV file
-    df = pd.read_csv("lawyer.csv")
-    text = "\n".join(df.astype(str).fillna("").agg(" ".join, axis=1))
-    text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-    texts = text_splitter.split_text(text)
-    documents = [Document(page_content=t) for t in texts]
-    
-    # Use the existing Gemini embeddings configuration
-    embedding_model = GoogleGenerativeAIEmbeddings(
-        model="models/embedding-001",
-        google_api_key=GEMINI_API_KEY  # Pass the API key directly
-    )
-    
-    vectorstore = FAISS.from_documents(documents, embedding_model)
-    llm = ChatGoogleGenerativeAI(
-        model="models/gemini-2.5-flash",
-        temperature=0.2,
-        google_api_key=GEMINI_API_KEY  # Pass the API key directly
-    )
-    qa_chain = RetrievalQA.from_chain_type(llm=llm, retriever=vectorstore.as_retriever())
-    return df, qa_chain
-
-# Load lawyer data once at startup
-lawyer_df, lawyer_qa_chain = load_lawyer_data()
-
-# Proper LangChain-compatible Embeddings class
-class GeminiEmbeddings(Embeddings):
-    def __init__(self):
-        self.model = "gemini-embedding-exp-03-07"
-    
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        """Embed multiple texts using Gemini"""
-        try:
-            embeddings = []
-            for text in texts:
-                response = genai.embed_content(
-                    model=self.model,
-                    content=text,
-                    task_type="retrieval_document"
-                )
-                embeddings.append(response["embedding"])
-            return embeddings
-        except Exception as e:
-            logger.error(f"Embedding Error: {e}")
-            raise
-    
-    def embed_query(self, text: str) -> List[float]:
-        """Embed a single query using Gemini"""
-        try:
-            response = genai.embed_content(
-                model=self.model,
-                content=text,
-                task_type="retrieval_query"
-            )
-            return response["embedding"]
-        except Exception as e:
-            logger.error(f"Embedding Query Error: {e}")
-            raise
-    
-    # Make the class callable for backward compatibility
-    def __call__(self, text: str) -> List[float]:
-        return self.embed_query(text)
-
-# Initialize Gemini models
-gemini_embeddings = GeminiEmbeddings()
-gemini_chat = genai.GenerativeModel('gemini-2.5-flash')
-
-class GeminiWrapper:
-    def __init__(self, model):
-        self.model = model
-    
-    def run(self, input_documents: List[str], question: str) -> str:
-        try:
-            context = "\n".join(input_documents)
-            prompt = f"""
-            **Role:** You are a legal assistant. Answer based ONLY on the given context.
-            Answer should be well in points and proper format
-            
-            **Context:**
-            {context}
-            
-            **Question:**
-            {question}
-            
-            **Answer:**
-            """
-            response = self.model.generate_content(prompt)
-            return response.text
-        except Exception as e:
-            logger.error(f"Gemini Error: {e}")
-            raise "Failed to generate answer. Please try again."
+    def is_rate_limited(self, ip: str) -> bool:
+        current_time = time.time()
+        if ip not in self.clients:
+            self.clients[ip] = []
         
-    def ans(self, question: str) -> str:
-        try:
-            prompt = f"""
-            **Role:** You are a legal assistant. Provide Legal response ONLY.
-            Answer should be well in points and proper format
+        # Keep only timestamps within sliding window
+        self.clients[ip] = [t for t in self.clients[ip] if current_time - t < self.window_seconds]
+        
+        if len(self.clients[ip]) >= self.requests_limit:
+            return True
             
-            **Question:**
-            {question}
-            """
-            response = self.model.generate_content(prompt)
-            return response.text
-        except Exception as e:
-            logger.error(f"Gemini Error : {e}")
-            raise HTTPException(status_code=500, detail="Failed to answer question")
+        self.clients[ip].append(current_time)
+        return False
 
-# Add CORS middleware
+# Limit to 10 requests per min for Q&A, and 5 requests per min for document uploads
+qa_limiter = TokenRateLimiter(requests_limit=10, window_seconds=60)
+pdf_limiter = TokenRateLimiter(requests_limit=5, window_seconds=60)
+
+app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -157,60 +69,172 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Initialize local HuggingFace Embeddings
+logger.info("Initializing HuggingFace Embeddings...")
+embedding_model = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/all-MiniLM-L6-v2",
+    model_kwargs={'device': 'cpu'}
+)
+
+# Initialize Groq LLM (if API key is present)
+llm = None
+if GROQ_API_KEY:
+    logger.info("Initializing Groq LLM...")
+    llm = ChatGroq(
+        model="llama-3.3-70b-versatile",
+        temperature=0.2,
+        groq_api_key=GROQ_API_KEY
+    )
+else:
+    logger.warning("Groq LLM is not initialized because GROQ_API_KEY is missing.")
+
+# Load lawyer database from CSV
+lawyer_df = pd.read_csv("lawyer.csv")
+logger.info("Lawyer database loaded from CSV")
+
+# Initialize / load lawyer Chroma index
+LAWYER_INDEX_PATH = "lawyer_chroma_index"
+if os.path.exists(LAWYER_INDEX_PATH):
+    logger.info("Loading existing lawyer Chroma index from disk...")
+    lawyer_chroma = Chroma(
+        collection_name="lawyers",
+        persist_directory=LAWYER_INDEX_PATH,
+        embedding_function=embedding_model
+    )
+else:
+    logger.info("Creating new lawyer Chroma index...")
+    documents = []
+    for idx, row in lawyer_df.iterrows():
+        spec = str(row.get('Specialization', '')).strip() if pd.notna(row.get('Specialization')) else ''
+        city = str(row.get('City', '')).strip() if pd.notna(row.get('City')) else ''
+        desc = str(row.get('Description', '')).strip() if pd.notna(row.get('Description')) else ''
+        name = str(row.get('Name', '')).strip() if pd.notna(row.get('Name')) else ''
+        
+        page_content = f"Specialization: {spec}\nCity: {city}\nDescription: {desc}"
+        doc = Document(page_content=page_content, metadata={"name": name})
+        documents.append(doc)
+        
+    lawyer_chroma = Chroma.from_documents(
+        documents=documents,
+        embedding=embedding_model,
+        persist_directory=LAWYER_INDEX_PATH,
+        collection_name="lawyers"
+    )
+    logger.info("Lawyer Chroma index created and saved successfully.")
+
+class LLMWrapper:
+    def __init__(self, llm_instance):
+        if not llm_instance:
+            raise HTTPException(status_code=500, detail="GROQ_API_KEY is not configured on the server.")
+        self.llm = llm_instance
+
+    def run(self, input_documents: List[str], question: str) -> str:
+        try:
+            context = "\n".join(input_documents)
+            prompt = f"""
+**Role:** You are a legal assistant. Answer based ONLY on the given context.
+Answer should be well in points and proper format.
+
+**Context:**
+{context}
+
+**Question:**
+{question}
+
+**Answer:**
+"""
+            response = self.llm.invoke(prompt)
+            return response.content
+        except Exception as e:
+            logger.error(f"Groq LLM Error: {e}")
+            raise HTTPException(status_code=500, detail="Failed to generate answer")
+
+    def ans(self, question: str) -> str:
+        try:
+            prompt = f"""
+**Role:** You are a legal assistant. Provide Legal response ONLY.
+Answer should be well in points and proper format.
+
+**Question:**
+{question}
+"""
+            response = self.llm.invoke(prompt)
+            return response.content
+        except Exception as e:
+            logger.error(f"Groq LLM Error: {e}")
+            raise HTTPException(status_code=500, detail="Failed to answer question")
+
 @app.post("/process_pdf/")
 async def process_pdf(
+    request: Request,
     file: UploadFile = File(...),
     query: str = Form(...),
     translation_language: str = Form(None)
 ):
+    # Check PDF rate limit
+    ip = request.client.host
+    if pdf_limiter.is_rate_limited(ip):
+        raise HTTPException(status_code=429, detail="Too many PDF uploads. Please try again in a minute.")
+        
     try:
-        # Read and extract text from PDF
         contents = await file.read()
         pdf_reader = PdfReader(io.BytesIO(contents))
         raw_text = ''.join([page.extract_text() or "" for page in pdf_reader.pages])
         logger.info("File successfully read")
-        
+
         if not raw_text.strip():
             raise HTTPException(status_code=400, detail="PDF contains no readable text")
 
-        # Split text
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=2000,  # Increase chunk size (fewer API calls)
-            chunk_overlap=200
-        )
-        texts = text_splitter.split_text(raw_text)
-        logger.info(f"Text split into {len(texts)} chunks")
-        
-        if not texts:
-            raise HTTPException(status_code=400, detail="Text splitting failed")
+        llm_chain = LLMWrapper(llm)
 
-        # Create FAISS vectorstore with Gemini embeddings
-        docsearch = FAISS.from_texts(
-            texts=texts,
-            embedding=gemini_embeddings
-        )
-        docs = docsearch.similarity_search(query, k=3)
-        logger.info("Embeddings generated and documents searched")
-
-        # Get answer from Gemini
-        llm_chain = GeminiWrapper(gemini_chat)
-        answer = llm_chain.run(
-            input_documents=[doc.page_content for doc in docs],
-            question=query
-        )
-        logger.info("Answer generated")
+        # Optimize: if PDF is small, bypass vector search entirely for maximum speed & accuracy
+        if len(raw_text) < 40000:
+            logger.info("PDF text is small. Bypassing vector search for speed.")
+            answer = llm_chain.run(
+                input_documents=[raw_text],
+                question=query
+            )
+        else:
+            logger.info("PDF text is large. Using vector search.")
+            text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=2000,
+                chunk_overlap=200
+            )
+            texts = text_splitter.split_text(raw_text)
+            if not texts:
+                raise HTTPException(status_code=400, detail="Text splitting failed")
             
-        # Use pre-loaded lawyer data
-        query = "provide one best lawyer for this case , do not answer anything except the name , the response should be strictly of format 'name = NAME_OF_LAWYER' nothing else : " + answer[0:2000]
-        answer2 = lawyer_qa_chain.invoke({"query": query})
+            docsearch = Chroma.from_texts(texts, embedding=embedding_model) 
+            docs = docsearch.similarity_search(query, k=4)
+            logger.info("Embeddings generated and documents searched")
+            answer = llm_chain.run(
+                input_documents=[doc.page_content for doc in docs],
+                question=query
+            )
+        
+        logger.info("Answer generated")
 
-        print("Bot:", answer2)
+        # Find the best matching lawyer locally with 0 LLM tokens using the Chroma index
+        search_query = query
+        if not search_query.strip():
+            search_query = answer[:1000]
+            
+        logger.info("Searching lawyer Chroma index...")
+        matched_docs = lawyer_chroma.similarity_search(search_query, k=5)
+        matched_names = [doc.metadata.get("name") for doc in matched_docs if doc.metadata.get("name")]
+        
+        df = lawyer_df.copy()
+        if 'Experience_Years' not in df.columns:
+            df['Experience_Years'] = df['Experience'].str.extract(r'(\d+)').astype(float).fillna(0).astype(int)
+            
+        matched_df = df[df['Name'].isin(matched_names)]
+        if matched_df.empty:
+            matched_df = df
+            
+        matched_df = matched_df.sort_values(by=['Rating', 'Experience_Years'], ascending=[False, False])
+        best_lawyer = json.loads(matched_df.iloc[0].to_json())
 
-        lawName = answer2['result'].split('=')[1].strip() 
-        lawNameObj = lawyer_df[lawyer_df['Name']==lawName]
-        lawResp = json.loads(lawNameObj.to_json(orient='records'))
-        print(lawResp)
-        return JSONResponse(content={"answer": answer, "lawyer": lawResp[0]})
+        return JSONResponse(content={"answer": answer, "lawyer": best_lawyer})
 
     except HTTPException:
         raise
@@ -219,14 +243,141 @@ async def process_pdf(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ----------------------------------------------------------------------
+# City Name Resolution Layer (Synonyms & Typo Fuzzy Matching)
+# ----------------------------------------------------------------------
+CITY_SYNONYMS = {
+    "bangalore": "Bengaluru",
+    "bengaluru": "Bengaluru",
+    "bombay": "Mumbai",
+    "mumbai": "Mumbai",
+    "calcutta": "Kolkata",
+    "kolkata": "Kolkata",
+    "madras": "Chennai",
+    "chennai": "Chennai",
+    "delhi": "Delhi",
+    "new delhi": "Delhi",
+    "gurgaon": "Gurugram",
+    "gurugram": "Gurugram",
+    "pondicherry": "Puducherry",
+    "puducherry": "Puducherry",
+    "orissa": "Odisha",
+    "trivandrum": "Thiruvananthapuram",
+    "thiruvananthapuram": "Thiruvananthapuram",
+    "baroda": "Vadodara",
+    "vadodara": "Vadodara",
+    "cochin": "Kochi",
+    "kochi": "Kochi",
+    "banaras": "Varanasi",
+    "varanasi": "Varanasi",
+    "allahabad": "Prayagraj",
+    "prayagraj": "Prayagraj"
+}
+
+def levenshtein_distance(s1: str, s2: str) -> int:
+    if len(s1) < len(s2):
+        return levenshtein_distance(s2, s1)
+    if len(s2) == 0:
+        return len(s1)
+    
+    previous_row = range(len(s2) + 1)
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+        
+    return previous_row[-1]
+
+def resolve_city_name(user_input: str, existing_cities: list) -> str:
+    cleaned_input = user_input.strip().lower()
+    if not cleaned_input:
+        return ""
+
+    # 1. Match against known synonyms
+    if cleaned_input in CITY_SYNONYMS:
+        synonym_resolved = CITY_SYNONYMS[cleaned_input]
+        # Verify if synonym city is in database
+        for city in existing_cities:
+            if city.strip().lower() == synonym_resolved.lower():
+                return city
+
+    # 2. Check simple substring containment
+    for city in existing_cities:
+        city_lower = city.strip().lower()
+        if cleaned_input == city_lower or cleaned_input in city_lower or city_lower in cleaned_input:
+            return city
+
+    # 3. Levenshtein fuzzy string distance matching
+    best_match = None
+    best_ratio = 0.0
+    for city in existing_cities:
+        city_lower = city.strip().lower()
+        max_len = max(len(cleaned_input), len(city_lower))
+        if max_len == 0:
+            continue
+        dist = levenshtein_distance(cleaned_input, city_lower)
+        ratio = 1.0 - (dist / max_len)
+        if ratio > best_ratio:
+            best_ratio = ratio
+            best_match = city
+
+    # Accept if similarity ratio >= 75%
+    if best_ratio >= 0.75:
+        return best_match
+
+    # Fallback to standard capitalized form
+    return user_input.strip().title()
 
 
+def resolve_city_name_with_llm(user_input: str, existing_cities: list, llm_instance) -> str:
+    cleaned_input = user_input.strip()
+    if not cleaned_input:
+        return ""
+
+    if not llm_instance:
+        # Fall back to rule-based matching if LLM is not initialized (no API key)
+        return resolve_city_name(user_input, existing_cities)
+
+    cities_str = ", ".join(existing_cities)
+    prompt = f"""
+You are a geographical matching assistant.
+You are given a list of unique cities present in a database:
+[{cities_str}]
+
+The user searched for the location: "{user_input}"
+
+Your task is to map the user's searched location to the most appropriate city from the database list above.
+Use your geographical knowledge:
+- If the user searches for a state (e.g. "Bihar"), map it to the city/cities belonging to that state from the list (e.g. "Patna").
+- If the user searches for a synonym or historical name (e.g. "Bombay"), map it to the corresponding city in the list (e.g. "Mumbai").
+- If the user searches for a landmark or description (e.g. "Silicon Valley of India" or "capital of India"), map it to the correct city (e.g. "Bengaluru" or "Delhi").
+- If it's a spelling typo (e.g. "Mumbay" -> "Mumbai"), correct it.
+
+Return ONLY the exact city name from the list. Do not include any explanation, markdown, introductory text, or punctuation.
+If the location does not map to any city in the list, return "None".
+
+Database City Match:"""
+    try:
+        response = llm_instance.invoke(prompt)
+        resolved = response.content.strip().replace('"', '').replace("'", "").strip()
+        if resolved.endswith('.'):
+            resolved = resolved[:-1]
+        
+        logger.info(f"LLM resolved location '{user_input}' to '{resolved}'")
+        
+        if resolved in existing_cities:
+            return resolved
+            
+        return resolve_city_name(user_input, existing_cities)
+    except Exception as e:
+        logger.error(f"Error resolving location with LLM: {e}")
+        return resolve_city_name(user_input, existing_cities)
 
 
-##
-##
-###
-####
 @app.post("/get_lawyers/")
 async def get_lawyers(
     domain: str = Form(...),
@@ -234,28 +385,36 @@ async def get_lawyers(
     experience: int = Form(...)
 ):
     try:
-        location = location.strip().title()
         domain = domain.strip().title()
-        df = pd.read_csv('lawyer.csv')
-        df['Experience_Years'] = df['Experience'].str.extract(r'(\d+)').astype(int)
+        
+        # Get unique cities list from lawyer dataset
+        existing_cities = [str(c).strip() for c in lawyer_df['City'].dropna().unique()]
+        
+        # Resolve city using LLM (with fallback to synonyms and fuzzy matching)
+        resolved_location = resolve_city_name_with_llm(location, existing_cities, llm)
+        logger.info(f"Resolved search city '{location}' to database city name '{resolved_location}'")
+        
+        df = lawyer_df.copy()
+        if 'Experience_Years' not in df.columns:
+            df['Experience_Years'] = df['Experience'].str.extract(r'(\d+)').astype(float).fillna(0).astype(int)
 
         filtered = df[
-            (df['City'] == location) &
+            (df['City'].str.lower() == resolved_location.lower()) &
             (df['Specialization'] == domain) &
             (df['Experience_Years'] >= experience)
         ]
-
-        print(filtered)
         response_data = json.loads(filtered.to_json(orient='records'))
         return JSONResponse(content={'lawyers': response_data})
     except Exception as e:
-        print("Error Occured")
+        logger.error(f"Error in /get_lawyers: {e}")
         return JSONResponse(content={'error': str(e)}, status_code=500)
 
 
+translator = Translator()
+
 class TranslationRequest(BaseModel):
     text: str
-    target_lang: str  # language code like 'hi', 'en'
+    target_lang: str
 
 class TranslationResponse(BaseModel):
     original_text: str
@@ -263,52 +422,110 @@ class TranslationResponse(BaseModel):
     source_lang: str
     target_lang: str
 
-# Initialize translator
-translator = Translator()
-
 @app.post("/translate", response_model=TranslationResponse)
 async def translate_text(request: TranslationRequest):
     try:
-        # Validate target language
         if request.target_lang not in LANGUAGES:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Unsupported language code. Supported codes: {list(LANGUAGES.keys())}"
-            )
-
-        # Perform translation (synchronous operation)
-        translation = await translator.translate(
-            request.text,
-            dest=request.target_lang
-        )
-
+            raise HTTPException(status_code=400, detail="Unsupported language code.")
+        translation = await translator.translate(request.text, dest=request.target_lang)
         return {
             "original_text": request.text,
             "translated_text": translation.text,
             "source_lang": translation.src,
             "target_lang": translation.dest
         }
-
     except Exception as e:
-        logging.error(f"Translation error: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Translation failed: {str(e)}"
-        )
-    
+        logger.error(f"Translation error: {e}")
+        raise HTTPException(status_code=500, detail=f"Translation failed: {str(e)}")
+
 
 class QuestionRequest(BaseModel):
     question: str
+    session_id: str = "default"
+
+SESSION_HISTORIES = {}
 
 @app.post("/getanswer")
-async def getAnswer(request: QuestionRequest):
+async def get_answer(request: Request, body: QuestionRequest):
+    # Check rate limit
+    ip = request.client.host
+    if qa_limiter.is_rate_limited(ip):
+        raise HTTPException(status_code=429, detail="Too many requests. Please try again in a minute.")
+        
     try:
-        llm_chain = GeminiWrapper(gemini_chat)
-        answer = llm_chain.ans(
-            question= request.question
-        )
+        # Check if the query is asking about finding/recommending advocates/lawyers
+        lawyer_keywords = ["lawyer", "advocate", "suggest", "find", "good", "recommend", "वकील", "अधिवक्ता", "सजेस्ट", "मदद", "असिस्ट", "काउंसल"]
+        is_asking_for_lawyer = any(kw in body.question.lower() for kw in lawyer_keywords)
+        
+        lawyers_context = ""
+        if is_asking_for_lawyer:
+            logger.info("User question triggers lawyer search. Querying Chroma...")
+            # Query the Chroma index for relevant advocates
+            matched_docs = lawyer_chroma.similarity_search(body.question, k=3)
+            
+            # Format advocate profiles
+            lawyer_profiles = []
+            for doc in matched_docs:
+                name = doc.metadata.get("name", "Unknown Advocate")
+                # Look up full details in lawyer_df
+                df_match = lawyer_df[lawyer_df['Name'] == name]
+                if not df_match.empty:
+                    row = df_match.iloc[0]
+                    profile = (
+                        f"- Name: {row.get('Name')}\n"
+                        f"  City: {row.get('City')}\n"
+                        f"  Location: {row.get('Location')}\n"
+                        f"  Specialization: {row.get('Specialization')}\n"
+                        f"  Experience: {row.get('Experience')}\n"
+                        f"  Rating: {row.get('Rating')}\n"
+                        f"  Description: {row.get('Description')}"
+                    )
+                else:
+                    profile = f"- Name: {name}\n  Details: {doc.page_content}"
+                lawyer_profiles.append(profile)
+                
+            lawyers_context = "\n\n".join(lawyer_profiles)
+
+        system_prompt = """You are "Gramin Nyay Mitra" (Rural Legal Friend), a helpful AI legal assistant. 
+Answer the user's questions in a clear, structured format using points (### headings, **bold** keypoints, bullet lists).
+Always prioritize simple, easy-to-understand explanations suitable for rural citizens.
+"""
+        if lawyers_context:
+            system_prompt += f"""\nHere are matched advocates from our database that you can suggest/recommend to the user if relevant to their request:
+{lawyers_context}
+
+Be sure to mention their names, specialization, city, rating, and description when recommending them. If they match the location requested (e.g. Bihar / Patna), highlight that!
+"""
+
+        if body.session_id not in SESSION_HISTORIES:
+            SESSION_HISTORIES[body.session_id] = []
+            
+        history = SESSION_HISTORIES[body.session_id]
+        
+        messages = [SystemMessage(content=system_prompt)]
+        
+        # Append last 6 messages of history (3 turns)
+        for msg in history[-6:]:
+            if msg["role"] == "user":
+                messages.append(HumanMessage(content=msg["content"]))
+            elif msg["role"] == "assistant":
+                messages.append(AIMessage(content=msg["content"]))
+                
+        # Append current question
+        messages.append(HumanMessage(content=body.question))
+        
+        if not llm:
+            raise HTTPException(status_code=500, detail="GROQ_API_KEY is not configured on the server.")
+            
+        response = llm.invoke(messages)
+        answer = response.content
+        
+        # Save to history
+        history.append({"role": "user", "content": body.question})
+        history.append({"role": "assistant", "content": answer})
+        SESSION_HISTORIES[body.session_id] = history[-20:]
+        
         return {"answer": answer}
     except Exception as e:
-        logging.error(f"Error getting answer: {str(e)}")
+        logger.error(f"Error in /getanswer: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-    

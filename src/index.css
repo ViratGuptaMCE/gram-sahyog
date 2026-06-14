@@ -98,6 +98,38 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+    @apply bg-background text-foreground antialiased selection:bg-blue-500/30 selection:text-blue-900;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Outfit', sans-serif;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply backdrop-blur-md bg-white/75 border border-white/30 shadow-xl shadow-black/5 rounded-2xl;
+  }
+
+  .glass-navbar {
+    @apply sticky top-0 z-50 backdrop-blur-lg bg-white/70 border-b border-white/20 shadow-sm transition-all duration-300;
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-indigo-600 to-emerald-600;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
   }
 }

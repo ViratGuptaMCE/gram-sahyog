@@ -6,16 +6,24 @@
   ],
   "include": ["src", "vite-env.d.ts"],
   "compilerOptions": {
-    "types": ["vite/client"],
+    "target": "esnext",
+    "composite": true,
+    "module": "esnext",
+    "lib": ["esnext", "dom"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     },
-    "noImplicitAny": false,
-    "noUnusedParameters": false,
+    "strict": true,
+    "esModuleInterop": true,
     "skipLibCheck": true,
-    "allowJs": true,
-    "noUnusedLocals": false,
-    "strictNullChecks": false
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "preserve",
+    "types": ["vite/client"],
+    "allowJs": true
   }
 }
