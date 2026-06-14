@@ -19,7 +19,12 @@ from langchain_groq import ChatGroq
 from langchain_core.documents import Document
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from dotenv import load_dotenv
-from googletrans import Translator, LANGUAGES
+from deep_translator import GoogleTranslator
+
+try:
+    SUPPORTED_LANGUAGES = list(GoogleTranslator().get_supported_languages(as_dict=True).values())
+except Exception as e:
+    SUPPORTED_LANGUAGES = ['en', 'hi', 'ur', 'pa', 'bn', 'gu', 'mr', 'ta', 'te', 'kn', 'ml', 'or', 'as', 'ne']
 import time
 
 # ----------------------------------------------------------------------
@@ -465,8 +470,6 @@ async def get_lawyers(
         return JSONResponse(content={'error': str(e)}, status_code=500)
 
 
-translator = Translator()
-
 class TranslationRequest(BaseModel):
     text: str
     target_lang: str
@@ -480,14 +483,17 @@ class TranslationResponse(BaseModel):
 @app.post("/translate", response_model=TranslationResponse)
 async def translate_text(request: TranslationRequest):
     try:
-        if request.target_lang not in LANGUAGES:
+        if request.target_lang not in SUPPORTED_LANGUAGES:
             raise HTTPException(status_code=400, detail="Unsupported language code.")
-        translation = await translator.translate(request.text, dest=request.target_lang)
+        
+        # deep-translator performs stable translation synchronously
+        translated_text = GoogleTranslator(source='auto', target=request.target_lang).translate(request.text)
+        
         return {
             "original_text": request.text,
-            "translated_text": translation.text,
-            "source_lang": translation.src,
-            "target_lang": translation.dest
+            "translated_text": translated_text,
+            "source_lang": "auto",
+            "target_lang": request.target_lang
         }
     except Exception as e:
         logger.error(f"Translation error: {e}")

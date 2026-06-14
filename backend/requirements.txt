@@ -3,7 +3,7 @@ uvicorn
 pydantic
 PyPDF2
 pandas
-googletrans==4.0.0-rc1
+deep-translator
 groq
 langchain-groq
 langchain-chroma
