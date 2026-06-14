@@ -1,12 +1,8 @@
 services:
   - type: web
     name: fastapi-backend
-    env: python
+    env: docker
     plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    dockerfilePath: backend/Dockerfile
     workingDir: backend
-    autoDeploy: true
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.10
+    autoDeploy: true

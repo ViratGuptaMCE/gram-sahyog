@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, MessageSquare, Users, Scale } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { FileText, MessageSquare, Users, Scale, ArrowRight } from 'lucide-react';
 
 const Services = () => {
   const [language, setLanguage] = useState(() => localStorage.getItem('language') || 'hi');
@@ -18,87 +18,99 @@ const Services = () => {
       icon: FileText,
       title: "दस्तावेज़ विश्लेषण",
       titleEn: "Document Analysis",
-      description: "अपने कानूनी दस्तावेज़ या भू-अभिलेख अपलोड करें और हिंदी में सरल सारांश और जटिल शर्तों का विश्लेषण प्राप्त करें।",
-      descriptionEn: "Upload your legal documents or land deeds to get a structured summary and plain-language explanation of complex terms.",
-      bgClass: "bg-blue-50 group-hover:bg-blue-100",
-      iconColor: "text-blue-600",
-      shadowClass: "hover:shadow-blue-600/10"
+      description: "भू-अभिलेख और पट्टों जैसे दस्तावेज़ों को मिनटों में सरल कानूनी भाषा और अनुभागों में अनुवादित और वर्गीकृत करें।",
+      descriptionEn: "Upload deeds or records to generate immediate plain-language reports, classifying critical legal sections and guidelines."
     },
     {
       icon: MessageSquare,
       title: "प्रश्न-उत्तर सेवा (AI)",
       titleEn: "Legal AI Companion", 
-      description: "श्रम नियमों, संपत्ति अधिकारों या नागरिक मामलों पर प्रश्न पूछें और तत्काल उचित बिंदुओं में उत्तर पाएं।",
-      descriptionEn: "Ask AI legal assistant questions regarding labor, property, or civil rights and receive instant point-wise guides.",
-      bgClass: "bg-emerald-50 group-hover:bg-emerald-100",
-      iconColor: "text-emerald-600",
-      shadowClass: "hover:shadow-emerald-600/10"
+      description: "नागरिक अधिकारों, रोजगार शर्तों और भूमि नियमों से जुड़े सवालों के जवाब सरल बिंदुओं में तुरंत प्राप्त करें।",
+      descriptionEn: "Ask compliance-oriented questions on general state laws and receive point-by-point summaries instantly."
     },
     {
       icon: Users,
       title: "स्मार्ट वकील मैचिंग",
-      titleEn: "Advocate Matcher",
-      description: "दस्तावेज़ अपलोड के आधार पर या सीधे शहर और विशेषता द्वारा अनुभवी और विश्वसनीय स्थानीय वकीलों से संपर्क साधें।",
-      descriptionEn: "Connect with verified local advocates sorted by specialization, ratings, and experience based on your case file details.",
-      bgClass: "bg-purple-50 group-hover:bg-purple-100",
-      iconColor: "text-purple-600",
-      shadowClass: "hover:shadow-purple-600/10"
+      titleEn: "Advocate Directory Finder",
+      description: "अनुभव, अभ्यास क्षेत्रों और जिला स्तर पर सत्यापित कानूनी पेशेवरों की सूचियों में से अपना उपयुक्त वकील चुनें।",
+      descriptionEn: "Filter and discover vetted local attorneys, selecting professionals specialized in civil, land, or business disputes."
     },
     {
       icon: Scale,
-      title: "कॉर्पोरेट व पेटेंट सहायता",
-      titleEn: "Innovation & Enterprise",
-      description: "ग्रामीण उद्यमियों के लिए व्यापार लाइसेंस अनुपालन, रोजगार कानूनों के नियम और पेटेंट आवेदन का पूरा मार्गदर्शन।",
-      descriptionEn: "Ensure corporate compliance, state regulatory approvals, and file patents for local innovations with tracking tickets.",
-      bgClass: "bg-orange-50 group-hover:bg-orange-100",
-      iconColor: "text-orange-600",
-      shadowClass: "hover:shadow-orange-600/10"
+      title: "कॉर्पोरेट व पेटेंट अनुपालन",
+      titleEn: "Innovations & Enterprise Compliance",
+      description: "स्थानीय व्यापार पंजीकरण नियमों, श्रम नियमों की आवश्यकताओं और नवप्रवर्तकों के लिए पेटेंट फाइलिंग टिकट प्रणाली।",
+      descriptionEn: "Track state labor compliance checklists and submit patent filings for regional inventions with live ticketing systems."
     }
   ];
 
   return (
-    <section id="services" className="py-24 bg-white relative">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-transparent to-slate-50/20">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-4">
-            {language === "hi" ? (
-              <>
-                हमारी <span className="text-indigo-600">विशेष सेवाएं</span>
-              </>
-            ) : (
-              <>
-                Our <span className="text-indigo-600">Core Services</span>
-              </>
-            )}
-          </h2>
-          <p className="text-lg text-slate-500 max-w-3xl mx-auto leading-relaxed">
-            {language === "hi"
-              ? "ग्रामीण और लघु व्यापारिक समुदायों के सशक्तिकरण के लिए तैयार की गई कानूनी सेवाएं"
-              : "Comprehensive legal assistance tools engineered to provide maximum clarity, speed, and safety."}
-          </p>
-        </div>
+    <section id="services" className="py-24 bg-[#F0F4F8] relative">
+      {/* Fine divider line */}
+      <div className="absolute left-0 right-0 top-0 h-[1px] bg-[#111827]/15"></div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {services.map((service, index) => (
-            <Card key={index} className={`group hover:scale-105 hover:shadow-xl ${service.shadowClass} border border-slate-100/80 transition-all duration-300 rounded-3xl bg-white p-2`}>
-              <CardHeader className="text-center pb-2">
-                <div className={`h-16 w-16 mx-auto mb-4 rounded-2xl flex items-center justify-center transition-colors ${service.bgClass}`}>
-                  <service.icon className={`h-8 w-8 ${service.iconColor}`} />
+      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
+          
+          {/* Left Column: Why We Are / About Section */}
+          <div className="lg:col-span-5 flex flex-col justify-center text-left sticky top-28">
+            <div className="inline-flex items-center space-x-3 mb-4">
+              <span className="h-[1px] w-8 bg-[#0B2545]/50"></span>
+              <span className="text-xs font-bold text-[#0B2545] tracking-[4px] uppercase font-sans">
+                {language === "hi" ? "हमारा परिचय" : "WHY WE ARE"}
+              </span>
+            </div>
+
+            <h2 className="text-3xl md:text-5xl font-sans font-black text-[#111827] leading-tight mb-6">
+              {language === "hi" ? (
+                <>
+                  ग्रामीण समाज के लिए <br />
+                  <span className="text-[#0B2545]">सरल कानूनी मार्ग</span>
+                </>
+              ) : (
+                <>
+                  Authoritative Guidance <br />
+                  <span className="text-[#0B2545]">Built For Trust</span>
+                </>
+              )}
+            </h2>
+            
+            <p className="text-sm text-[#111827]/60 leading-relaxed font-sans font-light tracking-wide mb-8 max-w-sm">
+              {language === "hi"
+                ? "हमारी परामर्श सेवाएं और एआई इंजन ग्रामीण क्षेत्रों के लोगों और उद्यमियों के अधिकारों की रक्षा करने और जटिल कानूनी प्रक्रियाओं को समझने में मदद करते हैं।"
+                : "Our platform bridges the gap between state-level regulations and local operations, offering simplified document translation, AI queries, and verified legal representation."}
+            </p>
+
+            <a href="#qa" className="self-start">
+              <Button variant="outline" className="border-[#111827] hover:bg-[#0B2545]/5 hover:text-[#0B2545] hover:border-[#0B2545] text-[#111827] font-sans font-bold uppercase text-xs tracking-widest rounded-none py-6 px-8 flex items-center space-x-2 group transition-all duration-300">
+                <span>{language === "hi" ? "और जानें" : "Learn More"}</span>
+                <span className="transform group-hover:translate-x-1 transition-transform font-sans">→</span>
+              </Button>
+            </a>
+          </div>
+
+          {/* Right Column: Clean List Format for Services */}
+          <div className="lg:col-span-7 border-t lg:border-t-0 lg:border-l border-[#111827]/15 lg:pl-12 pt-10 lg:pt-0">
+            <div className="divide-y divide-[#111827]/10">
+              {services.map((service, idx) => (
+                <div key={idx} className="flex items-start space-x-6 py-8 first:pt-0 last:pb-0 group">
+                  {/* Clean Modern Line-Art Icon Container */}
+                  <div className="p-3 bg-[#0B2545]/5 text-[#0B2545] rounded-none group-hover:bg-[#0B2545]/15 group-hover:text-[#0B2545] transition-all duration-300 shrink-0 border border-[#0B2545]/15">
+                    <service.icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-sans font-bold text-[#111827] uppercase tracking-wider mb-2 group-hover:text-[#0B2545] transition-colors">
+                      {language === "hi" ? service.title : service.titleEn}
+                    </h3>
+                    <p className="text-xs text-[#111827]/60 leading-relaxed font-sans font-light tracking-wide max-w-2xl">
+                      {language === "hi" ? service.description : service.descriptionEn}
+                    </p>
+                  </div>
                 </div>
-                <CardTitle className="text-lg font-extrabold text-slate-800 mb-1">
-                  {language === "hi" ? service.title : service.titleEn}
-                </CardTitle>
-                <CardDescription className="text-xs font-semibold text-indigo-500 uppercase tracking-widest">
-                  {language === "hi" ? service.titleEn : service.title}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="text-center px-4 pb-6">
-                <p className="text-slate-600 text-sm leading-relaxed">
-                  {language === "hi" ? service.description : service.descriptionEn}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
+              ))}
+            </div>
+          </div>
+
         </div>
       </div>
     </section>

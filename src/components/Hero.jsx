@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Scale, Users, FileText, MessageSquare, ArrowRight } from 'lucide-react';
+import { Star } from 'lucide-react';
 
 const Hero = () => {
   const [language, setLanguage] = useState(() => localStorage.getItem('language') || 'hi');
@@ -14,105 +14,191 @@ const Hero = () => {
   }, []);
 
   return (
-    <section className="relative py-24 md:py-32 overflow-hidden bg-slate-50/40">
-      {/* visual glowing background spheres */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-gradient-to-tr from-indigo-300/30 to-purple-300/30 blur-[130px] pointer-events-none"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[45%] h-[45%] rounded-full bg-gradient-to-br from-emerald-300/20 to-teal-300/20 blur-[130px] pointer-events-none"></div>
+    <section className="relative py-20 md:py-32 overflow-hidden bg-[#F0F4F8] min-h-screen flex items-center">
+      {/* Background Subtle Branding Accent */}
+      <div className="absolute inset-0 flex items-center justify-center select-none pointer-events-none overflow-hidden">
+        <div className="text-[26vw] font-sans font-black text-[#0B2545]/[0.02] leading-none tracking-widest uppercase select-none">
+          {language === 'hi' ? 'न्याय' : 'NYAY'}
+        </div>
+      </div>
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center">
-          <div className="inline-flex items-center space-x-2 bg-indigo-50/80 border border-indigo-100/50 rounded-full px-4 py-1.5 mb-8 shadow-sm">
-            <span className="flex h-2 w-2 rounded-full bg-indigo-600 animate-ping"></span>
-            <span className="text-xs font-bold text-indigo-800 tracking-wide uppercase">
-              {language === "hi" ? "एआई-संचालित कानूनी पोर्टल" : "AI-Powered Legal Intelligence Portal"}
-            </span>
+      {/* Grid Lines */}
+      <div className="absolute left-[8%] top-0 bottom-0 w-[1px] bg-[#111827]/[0.03] hidden md:block"></div>
+      <div className="absolute right-[8%] top-0 bottom-0 w-[1px] bg-[#111827]/[0.03] hidden md:block"></div>
+
+      <div className="relative max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 w-full z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+          
+          {/* Left Column: Bold Typography & Outlined Buttons */}
+          <div className="lg:col-span-7 flex flex-col justify-center text-left">
+            <div className="inline-flex items-center space-x-3 mb-6">
+              <span className="h-[1px] w-8 bg-[#0B2545]/40"></span>
+              <span className="text-xs md:text-xs font-bold text-[#0B2545] tracking-[4px] uppercase font-sans">
+                {language === "hi" ? "विधिक एआई सहायक" : "BILINGUAL AI ASSISTANT"}
+              </span>
+            </div>
+
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-sans font-black text-[#111827] leading-[1.1] tracking-tight mb-8">
+              {language === "hi" ? (
+                <>
+                  सरल और सुलभ <br />
+                  <span className="text-[#0B2545]">द्विभाषी विधिक साथी</span>
+                </>
+              ) : (
+                <>
+                  Bilingual AI <br />
+                  <span className="text-[#0B2545]">Legal Companion</span>
+                </>
+              )}
+            </h1>
+
+            {/* Asymmetric annotation block with clean left border */}
+            <div className="mt-2 mb-10 max-w-lg border-l-2 border-[#00B4D8] pl-6 py-2">
+              <p className="text-sm md:text-base text-[#111827]/70 font-sans font-light leading-relaxed tracking-wide">
+                {language === "hi" 
+                  ? "न्याय सहयोग मंच के माध्यम से एआई-संचालित दस्तावेज़ विश्लेषण प्राप्त करें, अपनी भाषा में कानूनी प्रश्न पूछें और विधिक सलाह प्राप्त करें।" 
+                  : "Analyze contracts and deeds in seconds, query our bilingual legal companion, evaluate business compliance codes, and access verified regulatory guidelines."}
+              </p>
+            </div>
+
+            {/* Outlined/Ghost Buttons with Sharp Corners & Arrow */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-start items-stretch sm:items-center">
+              <a href="#upload">
+                <Button size="lg" variant="outline" className="border-[#111827] hover:bg-[#0B2545]/5 hover:text-[#0B2545] hover:border-[#0B2545] text-[#111827] font-sans font-bold uppercase text-xs tracking-widest rounded-none py-6 px-8 flex items-center justify-center space-x-2 group transition-all duration-300">
+                  <span>{language === "hi" ? "विश्लेषण शुरू करें" : "Analyze Document"}</span>
+                  <span className="transform group-hover:translate-x-1 transition-transform font-sans">→</span>
+                </Button>
+              </a>
+              <a href="#qa">
+                <Button size="lg" variant="outline" className="border-[#111827]/30 hover:bg-[#0B2545]/5 hover:text-[#0B2545] hover:border-[#0B2545] text-[#111827]/75 font-sans font-bold uppercase text-xs tracking-widest rounded-none py-6 px-8 transition-all duration-300">
+                  {language === "hi" ? "एआई सहायक से पूछें" : "Consult AI Companion"}
+                </Button>
+              </a>
+            </div>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tight text-slate-900 mb-6 font-display leading-tight">
-            {language === "hi" ? (
-              <>
-                ग्रामीण क्षेत्रों के लिए <br />
-                <span className="text-gradient">सुलभ एवं सरल न्याय</span>
-              </>
-            ) : (
-              <>
-                Democratizing Legal Help for <br />
-                <span className="text-gradient">Rural Communities</span>
-              </>
-            )}
-          </h1>
+          {/* Right Column: Framed Portrait & Testimonial Overlay */}
+          <div className="lg:col-span-5 relative flex flex-col items-center justify-center mt-8 lg:mt-0">
+            
+            {/* Custom geometric masked portrait container */}
+            <div className="relative w-full max-w-[340px] md:max-w-[370px]">
+              
+              {/* Geometric Frame Border Accent (Diagonal cross-lines & double borders) */}
+              <div className="absolute inset-0 border border-[#0B2545] translate-x-3 translate-y-3 pointer-events-none z-0"></div>
+              
+              {/* Main Photo Masked in Leaf/Geometric shape */}
+              <div className="relative overflow-hidden aspect-[4/5] bg-[#EFEAE2] border border-[#111827] rounded-[130px_16px_130px_16px] z-10 group shadow-lg">
+                <img 
+                  src="/lawyers_portrait.jpg" 
+                  alt="Diverse Pair of Confident Attorneys" 
+                  className="w-full h-full object-cover object-center grayscale contrast-[1.03] group-hover:grayscale-0 transition-all duration-750"
+                />
+                
+                {/* Thin line grid overlay */}
+                <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full pointer-events-none stroke-[#0B2545]/20 fill-none stroke-[0.5]" preserveAspectRatio="none">
+                  <path d="M 0 0 L 100 100 M 100 0 L 0 100" />
+                </svg>
 
-          <p className="text-lg md:text-xl text-slate-600 mb-12 max-w-3xl mx-auto leading-relaxed">
-            {language === "hi" 
-              ? "दस्तावेज़ों का हिंदी विश्लेषण प्राप्त करें, हमारे एआई सहायक से प्रश्न पूछें, अपनी छोटी कंपनियों के नियमों का अनुपालन करें और सत्यापित वकीलों से तुरंत संपर्क साधें।" 
-              : "Analyze land/contract documents in seconds, chat with our multilingual AI legal companion, manage rural business registrations, and connect with certified local advocates."}
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-20">
-            <a href="#upload">
-              <Button size="lg" className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-xl shadow-indigo-600/15 hover:shadow-indigo-600/30 transition-all hover:scale-105 active:scale-95 duration-200 px-8 py-6 rounded-2xl flex items-center space-x-2">
-                <span>{language === "hi" ? "दस्तावेज़ विश्लेषण शुरू करें" : "Start Document Analysis"}</span>
-                <ArrowRight className="h-5 w-5" />
-              </Button>
-            </a>
-            <a href="#qa">
-              <Button size="lg" variant="outline" className="border-slate-200 text-slate-700 hover:bg-slate-50 font-bold bg-white hover:border-slate-400 hover:scale-105 active:scale-95 transition-all duration-200 px-8 py-6 rounded-2xl">
-                {language === "hi" ? "सहायक से सवाल पूछें" : "Consult AI Assistant"}
-              </Button>
-            </a>
-          </div>
-
-          {/* Core Feature Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-12">
-            <a href="#upload" className="group flex flex-col items-center p-8 bg-white/70 backdrop-blur-md border border-slate-100 rounded-3xl shadow-lg hover:shadow-2xl hover:shadow-indigo-500/5 hover:-translate-y-2 transition-all duration-300">
-              <div className="p-4 bg-indigo-50 rounded-2xl group-hover:bg-indigo-100 transition-colors mb-5">
-                <FileText className="h-8 w-8 text-indigo-600 animate-float" />
+                <div className="absolute inset-0 bg-[#0B2545]/5 mix-blend-color-burn pointer-events-none"></div>
               </div>
-              <h3 className="text-lg font-bold text-slate-800 mb-2 group-hover:text-indigo-600 transition-colors">
-                {language === "hi" ? "दस्तावेज़ विश्लेषण" : "Document Analysis"}
-              </h3>
-              <p className="text-sm text-slate-500 text-center leading-relaxed">
-                {language === "hi" ? "पट्टा, अनुबंध या कागजात अपलोड कर सरल सारांश पाएं।" : "Upload pattu, contracts, or records for instant summaries."}
-              </p>
-            </a>
 
-            <a href="#qa" className="group flex flex-col items-center p-8 bg-white/70 backdrop-blur-md border border-slate-100 rounded-3xl shadow-lg hover:shadow-2xl hover:shadow-emerald-500/5 hover:-translate-y-2 transition-all duration-300">
-              <div className="p-4 bg-emerald-50 rounded-2xl group-hover:bg-emerald-100 transition-colors mb-5">
-                <MessageSquare className="h-8 w-8 text-emerald-600" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-800 mb-2 group-hover:text-emerald-600 transition-colors">
-                {language === "hi" ? "कानूनी सलाह (AI)" : "Legal AI Q&A"}
-              </h3>
-              <p className="text-sm text-slate-500 text-center leading-relaxed">
-                {language === "hi" ? "कानून संबंधी कोई भी सवाल पूछें और तुरंत जवाब पाएं।" : "Ask any legal query and get answers formatted in points."}
-              </p>
-            </a>
+              {/* Floating Trust Testimonial Card */}
+              <div className="absolute bottom-[-40px] left-[-30px] md:left-[-50px] bg-[#F0F4F8] border border-[#111827] p-4 max-w-[210px] z-20 shadow-xl flex flex-col items-start text-left animate-float">
+                <div className="flex items-center space-x-3 mb-2">
+                  {/* Circular client avatar */}
+                  <div className="w-10 h-10 rounded-full overflow-hidden border border-[#111827] shrink-0">
+                    <img 
+                      src="/client_portrait.jpg" 
+                      alt="Satisfied Client Portrait" 
+                      className="w-full h-full object-cover grayscale"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-sans font-bold text-[#111827] truncate uppercase">
+                      {language === "hi" ? "राधा शर्मा" : "Radha Sharma"}
+                    </h4>
+                    <span className="text-[11px] font-sans text-[#111827]/60 tracking-wider block">
+                      {language === "hi" ? "सहकारी अध्यक्ष" : "Co-op President"}
+                    </span>
+                  </div>
+                </div>
+                
+                <p className="text-xs text-[#111827]/80 font-sans tracking-wide leading-relaxed mb-1.5 italic">
+                  {language === "hi" 
+                    ? "“एटीएस क्लब की सलाह ने हमारी कृषि समिति की कानूनी सुरक्षा पक्की कर दी।”" 
+                    : "“The prompt audit and legal matching gave our local co-op total security.”"}
+                </p>
 
-            <a href="#lawDynamic" className="group flex flex-col items-center p-8 bg-white/70 backdrop-blur-md border border-slate-100 rounded-3xl shadow-lg hover:shadow-2xl hover:shadow-purple-500/5 hover:-translate-y-2 transition-all duration-300">
-              <div className="p-4 bg-purple-50 rounded-2xl group-hover:bg-purple-100 transition-colors mb-5">
-                <Users className="h-8 w-8 text-purple-600" />
+                {/* Star Rating below */}
+                <div className="flex items-center space-x-0.5 text-[#00B4D8]">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-2.5 h-2.5 fill-current" />
+                  ))}
+                </div>
               </div>
-              <h3 className="text-lg font-bold text-slate-800 mb-2 group-hover:text-purple-600 transition-colors">
-                {language === "hi" ? "वकील खोजें" : "Match with Lawyers"}
-              </h3>
-              <p className="text-sm text-slate-500 text-center leading-relaxed">
-                {language === "hi" ? "अपने जिले के अनुसार सत्यापित वकीलों से जुड़ें।" : "Connect with verified local lawyers in your district."}
-              </p>
-            </a>
 
-            <a href="#corporate" className="group flex flex-col items-center p-8 bg-white/70 backdrop-blur-md border border-slate-100 rounded-3xl shadow-lg hover:shadow-2xl hover:shadow-orange-500/5 hover:-translate-y-2 transition-all duration-300">
-              <div className="p-4 bg-orange-50 rounded-2xl group-hover:bg-orange-100 transition-colors mb-5">
-                <Scale className="h-8 w-8 text-orange-600" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-800 mb-2 group-hover:text-orange-600 transition-colors">
-                {language === "hi" ? "कॉर्पोरेट व पेटेंट" : "Corporate & Patents"}
-              </h3>
-              <p className="text-sm text-slate-500 text-center leading-relaxed">
-                {language === "hi" ? "स्टार्टअप नियमों का अनुपालन व पेटेंट फाइलिंग करें।" : "Manage compliance, regulatory filing, and local innovation patents."}
+            </div>
+
+            {/* Sub-label */}
+            <div className="mt-16 text-left max-w-[280px] self-start lg:self-end pr-4">
+              <span className="text-xs text-[#0B2545] font-sans font-bold block mb-1">
+                {language === "hi" ? "• न्याय सहयोग पहल" : "• NYAY SAHYOG INITIATIVE"}
+              </span>
+              <p className="text-[11px] text-[#111827]/60 font-sans leading-relaxed tracking-wide">
+                {language === "hi"
+                  ? "सभी संसाधन और संपर्क सत्यापित विनियामक मानकों पर आधारित हैं।"
+                  : "All legal resources and listings are structured on verified regulatory foundations and customized for local user assistance."}
               </p>
-            </a>
+            </div>
+
           </div>
         </div>
+
+        {/* Dynamic Navigational Grid Links */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-0 border-t border-[#111827]/15 mt-20 pt-8">
+          
+          <a href="#upload" className="group flex flex-col p-6 border-b md:border-b-0 md:border-r border-[#111827]/10 hover:bg-[#0B2545]/5 transition-all duration-300">
+            <span className="text-xs font-bold text-[#0B2545] tracking-widest uppercase mb-4">01 / ANALYZER</span>
+            <h3 className="text-lg font-sans font-bold text-[#111827] mb-2 group-hover:text-[#0B2545] transition-colors">
+              {language === "hi" ? "दस्तावेज़ विश्लेषण" : "Document Analysis"}
+            </h3>
+            <p className="text-xs text-[#111827]/60 leading-relaxed font-sans font-light">
+              {language === "hi" ? "पट्टा या अन्य कागजात अपलोड कर हिंदी सारांश पाएं।" : "Upload deeds or records for instant simplified reports."}
+            </p>
+          </a>
+
+          <a href="#qa" className="group flex flex-col p-6 border-b md:border-b-0 md:border-r border-[#111827]/10 hover:bg-[#0B2545]/5 transition-all duration-300">
+            <span className="text-xs font-bold text-[#0B2545] tracking-widest uppercase mb-4">02 / AI COUNSEL</span>
+            <h3 className="text-lg font-sans font-bold text-[#111827] mb-2 group-hover:text-[#0B2545] transition-colors">
+              {language === "hi" ? "कानूनी सलाह (AI)" : "Legal AI Assistant"}
+            </h3>
+            <p className="text-xs text-[#111827]/60 leading-relaxed font-sans font-light">
+              {language === "hi" ? "कानून संबंधी कोई भी सवाल पूछें और तुरंत जवाब पाएं।" : "Consult our interactive AI legal expert on general laws."}
+            </p>
+          </a>
+
+          <a href="#lawDynamic" className="group flex flex-col p-6 border-b md:border-b-0 md:border-r border-[#111827]/10 hover:bg-[#0B2545]/5 transition-all duration-300">
+            <span className="text-xs font-bold text-[#0B2545] tracking-widest uppercase mb-4">03 / DIRECTORY</span>
+            <h3 className="text-lg font-sans font-bold text-[#111827] mb-2 group-hover:text-[#0B2545] transition-colors">
+              {language === "hi" ? "वकील निर्देशिका" : "Advocate Directory"}
+            </h3>
+            <p className="text-xs text-[#111827]/60 leading-relaxed font-sans font-light">
+              {language === "hi" ? "अपने जिले में उपलब्ध सत्यापित कानूनी विशेषज्ञों की सूची देखें।" : "Browse specialty profiles of vetted legal specialists in your district."}
+            </p>
+          </a>
+
+          <a href="#corporate" className="group flex flex-col p-6 hover:bg-[#0B2545]/5 transition-all duration-300">
+            <span className="text-xs font-bold text-[#0B2545] tracking-widest uppercase mb-4">04 / COMPLIANCE</span>
+            <h3 className="text-lg font-sans font-bold text-[#111827] mb-2 group-hover:text-[#0B2545] transition-colors">
+              {language === "hi" ? "कॉर्पोरेट व पेटेंट" : "Corporate & Patents"}
+            </h3>
+            <p className="text-xs text-[#111827]/60 leading-relaxed font-sans font-light">
+              {language === "hi" ? "स्टार्टअप नियमों का अनुपालन व पेटेंट फाइलिंग करें।" : "Filing guides and compliance managers for local businesses."}
+            </p>
+          </a>
+
+        </div>
+
       </div>
     </section>
   );

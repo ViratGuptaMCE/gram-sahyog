@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Users, Star, MapPin, Award, Search, Loader2 } from 'lucide-react';
 import Profile from './Profile';
+import LegalLoader from './LegalLoader';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL.replace(/\/$/, "") : "/api";
 
@@ -88,55 +89,62 @@ const LawyerMatching = () => {
   };
 
   return (
-    <section id="lawDynamic" className="py-20 bg-slate-50/50 relative rounded-3xl my-6 border border-slate-100">
-      <div className="absolute bottom-[-5%] right-[-5%] w-[25%] h-[25%] rounded-full bg-purple-100/20 blur-[80px] pointer-events-none"></div>
+    <section id="lawDynamic" className="py-24 bg-[#F0F4F8] relative">
+      <div className="absolute left-0 right-0 top-0 h-[1px] bg-[#111827]/15"></div>
+      
+      <div className="max-w-6xl mx-auto px-6 sm:px-8">
+        <div className="text-center mb-16">
+          <div className="inline-flex items-center space-x-3 mb-4">
+            <span className="h-[1px] w-8 bg-[#0B2545]/50"></span>
+            <span className="text-xs font-bold text-[#0B2545] tracking-[4px] uppercase font-sans">
+              {language === "hi" ? "अधिवक्ता निर्देशिका" : "ADVOCATE FINDER"}
+            </span>
+          </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-4">
+          <h2 className="text-4xl md:text-5xl font-sans font-black text-[#111827] leading-tight mb-4">
             {language === "hi" ? (
               <>
-                वकील <span className="text-gradient">खोज व मिलान</span>
+                वकील <span className="text-[#0B2545]">खोज व मिलान</span>
               </>
             ) : (
               <>
-                Find & Match <span className="text-gradient">Advocates</span>
+                Find & Match <span className="text-[#0B2545]">Advocates</span>
               </>
             )}
           </h2>
-          <p className="text-lg text-slate-500 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-sm md:text-base text-[#111827]/60 max-w-2xl mx-auto leading-relaxed font-sans font-light tracking-wide">
             {language === "hi"
               ? "अपनी आवश्यकताओं के अनुसार विशेषज्ञ वकीलों को खोजें और संपर्क करें।"
               : "Search legal professionals by specialization, city location, and minimum experience."}
           </p>
         </div>
 
-        <Card className="mb-10 border border-slate-100/80 shadow-2xl shadow-slate-100 rounded-3xl overflow-hidden bg-white p-2">
-          <CardHeader className="pb-4">
-            <CardTitle className="flex items-center space-x-2 text-xl font-extrabold text-slate-800">
-              <Users className="h-5 w-5 text-indigo-600 animate-pulse" />
+        <Card className="mb-10 border border-[#111827]/15 shadow-none rounded-none bg-transparent overflow-hidden p-0">
+          <CardHeader className="pb-4 p-6">
+            <CardTitle className="flex items-center space-x-3 text-lg font-sans font-bold text-[#111827] uppercase tracking-wider">
+              <Users className="h-4 w-4 text-[#0B2545]" />
               <span>{language === "hi" ? "खोज मानदंड" : "Search Criteria"}</span>
             </CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardDescription className="text-xs text-[#111827]/60 font-sans">
               {language === "hi"
                 ? "शहर, कानून का प्रकार और अनुभव दर्ज करें"
                 : "Fill variables below to narrow advocate search"}
             </CardDescription>
           </CardHeader>
           
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-6 p-6 pt-0">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <Label htmlFor="domain" className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                <Label htmlFor="domain" className="text-xs font-bold text-[#0B2545] uppercase tracking-widest font-sans">
                   {language === "hi" ? "कानून का क्षेत्र" : "Legal Domain"}
                 </Label>
                 <Select onValueChange={(value) => setSearchCriteria({ ...searchCriteria, domain: value })}>
-                  <SelectTrigger className="mt-2 rounded-2xl border-slate-200 h-11 bg-slate-50/30">
+                  <SelectTrigger className="mt-2 rounded-none border-[#111827]/20 h-11 bg-[#F0F4F8]/10 font-sans text-xs text-[#111827]">
                     <SelectValue placeholder={language === "hi" ? "क्षेत्र चुनें" : "Select Domain"} />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-none bg-[#F0F4F8] border-[#111827]/15">
                     {domains.map((domain) => (
-                      <SelectItem key={domain.value} value={domain.value}>
+                      <SelectItem key={domain.value} value={domain.value} className="rounded-none hover:bg-[#0B2545]/5 hover:text-[#0B2545]">
                         {language === "hi" ? domain.labelHi : domain.labelEn}
                       </SelectItem>
                     ))}
@@ -145,7 +153,7 @@ const LawyerMatching = () => {
               </div>
 
               <div>
-                <Label htmlFor="location" className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                <Label htmlFor="location" className="text-xs font-bold text-[#0B2545] uppercase tracking-widest font-sans">
                   {language === "hi" ? "शहर / स्थान" : "Location / City"}
                 </Label>
                 <Input
@@ -153,23 +161,23 @@ const LawyerMatching = () => {
                   placeholder={language === "hi" ? "जैसे: Delhi, Mumbai" : "e.g., Delhi, Mumbai"}
                   value={searchCriteria.location}
                   onChange={(e) => setSearchCriteria({ ...searchCriteria, location: e.target.value })}
-                  className="mt-2 rounded-2xl border-slate-200 h-11 bg-slate-50/30"
+                  className="mt-2 rounded-none border-[#111827]/20 h-11 bg-[#F0F4F8]/10 font-sans text-xs text-[#111827]"
                 />
               </div>
 
               <div>
-                <Label htmlFor="experience" className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                <Label htmlFor="experience" className="text-xs font-bold text-[#0B2545] uppercase tracking-widest font-sans">
                   {language === "hi" ? "न्यूनतम अनुभव" : "Minimum Experience"}
                 </Label>
                 <Select onValueChange={(value) => setSearchCriteria({ ...searchCriteria, experience: value })}>
-                  <SelectTrigger className="mt-2 rounded-2xl border-slate-200 h-11 bg-slate-50/30">
+                  <SelectTrigger className="mt-2 rounded-none border-[#111827]/20 h-11 bg-[#F0F4F8]/10 font-sans text-xs text-[#111827]">
                     <SelectValue placeholder={language === "hi" ? "अनुभव चुनें" : "Select Experience"} />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0">{language === "hi" ? "कोई भी अनुभव" : "Any Experience"}</SelectItem>
-                    <SelectItem value="5">5+ {language === "hi" ? "साल" : "Years"}</SelectItem>
-                    <SelectItem value="10">10+ {language === "hi" ? "साल" : "Years"}</SelectItem>
-                    <SelectItem value="15">15+ {language === "hi" ? "साल" : "Years"}</SelectItem>
+                  <SelectContent className="rounded-none bg-[#F0F4F8] border-[#111827]/15">
+                    <SelectItem value="0" className="rounded-none hover:bg-[#0B2545]/5 hover:text-[#0B2545]">{language === "hi" ? "कोई भी अनुभव" : "Any Experience"}</SelectItem>
+                    <SelectItem value="5" className="rounded-none hover:bg-[#0B2545]/5 hover:text-[#0B2545]">5+ {language === "hi" ? "साल" : "Years"}</SelectItem>
+                    <SelectItem value="10" className="rounded-none hover:bg-[#0B2545]/5 hover:text-[#0B2545]">10+ {language === "hi" ? "साल" : "Years"}</SelectItem>
+                    <SelectItem value="15" className="rounded-none hover:bg-[#0B2545]/5 hover:text-[#0B2545]">15+ {language === "hi" ? "साल" : "Years"}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -178,17 +186,17 @@ const LawyerMatching = () => {
             <Button
               onClick={searchLawyers}
               disabled={isSearching}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl py-6 shadow-xl shadow-indigo-600/10 hover:shadow-indigo-600/25 transition-all hover:scale-[1.01] active:scale-95 duration-200"
+              className="w-full bg-[#111827] hover:bg-[#0B2545] text-[#F0F4F8] font-semibold tracking-wider font-sans uppercase text-xs rounded-none py-6 shadow-sm transition-all duration-300"
               size="lg"
             >
               {isSearching ? (
                 <span className="flex items-center space-x-2 justify-center">
-                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin text-[#F0F4F8]" />
                   <span>{language === "hi" ? "खोज की जा रही है..." : "Searching Advocates..."}</span>
                 </span>
               ) : (
                 <span className="flex items-center justify-center space-x-2">
-                  <Search className="h-4 w-4" />
+                  <Search className="h-3.5 w-3.5" />
                   <span>{language === "hi" ? "वकील खोजें" : "Search Advocates"}</span>
                 </span>
               )}
@@ -196,9 +204,18 @@ const LawyerMatching = () => {
           </CardContent>
         </Card>
 
-        {matchedLawyers.length > 0 && (
-          <div className="space-y-6 mt-8">
-            <h3 className="text-xl font-extrabold text-slate-800 mb-6">
+        {isSearching && (
+          <div className="mt-12 p-8 border border-dashed border-[#111827]/30 rounded-none bg-[#F0F4F8]/10 text-center animate-pulse">
+            <LegalLoader 
+              message={language === "hi" ? "वकीलों की खोज की जा रही है..." : "Searching Professional Advocates..."} 
+              subMessage={language === "hi" ? "कृपया प्रतीक्षा करें, हम सर्वोत्तम कानूनी अधिवक्ताओं की सूची तैयार कर रहे हैं..." : "Please wait as we match your case credentials with verified profiles..."} 
+            />
+          </div>
+        )}
+
+        {!isSearching && matchedLawyers.length > 0 && (
+          <div className="space-y-6 mt-12 animate-fade-in">
+            <h3 className="text-xl font-sans font-bold text-[#111827] mb-6">
               {language === "hi" ? (
                 <>
                   मिलान करने वाले वकील ({matchedLawyers.length})
@@ -212,60 +229,56 @@ const LawyerMatching = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {matchedLawyers.map((lawyer, idx) => (
-                <Card key={idx} className="group hover:-translate-y-2 hover:shadow-2xl transition-all duration-300 border border-slate-100 rounded-3xl overflow-hidden bg-white p-2">
-                  <CardHeader className="pb-4">
+                <Card key={idx} className="group hover:shadow-2xl hover:shadow-[#0B2545]/5 transition-all duration-500 border border-[#111827]/15 rounded-none bg-transparent overflow-hidden p-0 shadow-none hover:border-[#0B2545]/40">
+                  <CardHeader className="p-6 pb-2 text-left">
                     <div className="flex items-center space-x-4">
-                      <div className="w-16 h-16 rounded-2xl overflow-hidden border border-slate-100 shadow-sm shrink-0 bg-slate-50">
-                        <img
-                          src={lawyer.Image_Url}
-                          alt="lawyer photo"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
+                      <div className="w-16 h-16 rounded-none border border-[#111827]/15 flex items-center justify-center shrink-0 bg-[#0B2545]/5 text-[#00B4D8] group-hover:bg-[#0B2545]/15 transition-all duration-300">
+                        <Users className="h-8 w-8 stroke-[1.2]" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <CardTitle className="text-base font-extrabold text-slate-900 truncate">
+                        <CardTitle className="text-lg font-sans font-bold text-[#111827] truncate group-hover:text-[#0B2545] transition-colors">
                           {lawyer.Name}
                         </CardTitle>
                         {language === 'hi' && (
-                          <CardDescription className="text-xs font-semibold text-slate-400 truncate">
+                          <CardDescription className="text-xs font-bold text-[#0B2545] uppercase tracking-wider truncate font-sans">
                             {translatedNames[lawyer.Name] || "अनुवाद हो रहा है..."}
                           </CardDescription>
                         )}
                       </div>
-                      <div className="flex items-center space-x-1 shrink-0 bg-yellow-50 px-2 py-0.5 rounded-full border border-yellow-100">
-                        <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                        <span className="text-xs font-bold text-yellow-700">
+                      <div className="flex items-center space-x-1 shrink-0 bg-[#0B2545]/5 px-2.5 py-1 rounded-none border border-[#0B2545]/15 text-[#0B2545]">
+                        <Star className="h-3 w-3 fill-[#00B4D8] text-[#00B4D8]" />
+                        <span className="text-xs font-sans font-bold">
                           {lawyer.Rating}
                         </span>
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4 px-4 pb-6">
-                    <div className="flex flex-wrap gap-1.5">
-                      <Badge variant="secondary" className="bg-indigo-50/70 border border-indigo-100/30 text-indigo-700 text-xs font-bold rounded-lg px-2.5 py-0.5">
+                  <CardContent className="p-6 pt-2 space-y-4 text-left">
+                    <div className="flex flex-wrap">
+                      <Badge variant="secondary" className="bg-[#0B2545]/5 border border-[#0B2545]/15 text-[#0B2545] text-xs font-bold rounded-none px-2.5 py-0.5 uppercase tracking-widest">
                         {lawyer.Specialization}
                       </Badge>
                     </div>
 
-                    <div className="space-y-2 text-sm text-slate-650">
+                    <div className="space-y-2 text-xs text-[#111827]/75 font-sans font-light tracking-wide">
                       <div className="flex items-center space-x-2.5">
-                        <Award className="h-4 w-4 text-indigo-500" />
+                        <Award className="h-3.5 w-3.5 text-[#0B2545]" />
                         <span>{lawyer.Experience}</span>
                       </div>
 
                       <div className="flex items-center space-x-2.5">
-                        <MapPin className="h-4 w-4 text-indigo-500" />
+                        <MapPin className="h-3.5 w-3.5 text-[#0B2545]" />
                         <span className="truncate">{lawyer.Location}</span>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 pt-3">
-                      <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md shadow-indigo-600/10" size="sm">
+                      <Button className="w-full bg-[#111827] hover:bg-[#0B2545] text-[#F0F4F8] font-semibold tracking-wider font-sans uppercase text-xs rounded-none py-4 transition-all duration-300" size="sm">
                         <a href="https://www.chatbase.co/chatbot-iframe/0CXRULDX-IJ6GaESy_Wy9" target="_blank" rel="noopener noreferrer" className="w-full text-center">
                           {language === "hi" ? "संपर्क" : "Contact"}
                         </a>
                       </Button>
-                      <Button variant="outline" className="w-full border-indigo-100 text-indigo-700 hover:bg-indigo-50/50 font-bold rounded-xl" size="sm" onClick={() => setSelLawyer(lawyer)}>
+                      <Button variant="outline" className="w-full border-[#111827]/30 text-[#111827] hover:bg-[#0B2545]/5 hover:text-[#0B2545] hover:border-[#0B2545] bg-transparent rounded-none transition-all duration-300 uppercase font-sans text-xs tracking-widest font-bold" size="sm" onClick={() => setSelLawyer(lawyer)}>
                         {language === "hi" ? "प्रोफाइल" : "Profile"}
                       </Button>
                     </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Star, MapPin, Award, BookOpen, User, X } from "lucide-react";
+import { Star, MapPin, Award, BookOpen, User, X, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const Profile = (props) => {
@@ -15,24 +15,24 @@ const Profile = (props) => {
 
   return (
     <div
-      className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 overflow-y-auto px-4 py-8 animate-fade-in"
+      className="fixed inset-0 bg-[#111827]/70 backdrop-blur-sm flex items-center justify-center z-50 overflow-y-auto px-4 py-8 animate-fade-in"
       onClick={props.onClose}
     >
       <div
-        className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-slate-100 animate-scale-up"
+        className="bg-[#F0F4F8] rounded-none border border-[#0B2545]/20 shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden animate-scale-up"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-600 to-indigo-800 text-white px-6 py-5 flex justify-between items-center relative">
+        <div className="bg-[#0B2545] text-[#F0F4F8] px-6 py-5 flex justify-between items-center relative">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-white/10 rounded-xl">
+            <div className="p-2 bg-[#F0F4F8]/10 rounded-none border border-[#F0F4F8]/20">
               <User className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-xl font-extrabold truncate pr-4">{props.Name}</h2>
+            <h2 className="text-lg font-sans font-bold tracking-wide truncate pr-4">{props.Name}</h2>
           </div>
           <button
             onClick={props.onClose}
-            className="text-white/80 hover:text-white p-1 hover:bg-white/10 rounded-lg transition-all"
+            className="text-[#F0F4F8]/80 hover:text-[#F0F4F8] p-1 hover:bg-white/10 rounded-none transition-all"
           >
             <X className="h-5 w-5" />
           </button>
@@ -41,25 +41,19 @@ const Profile = (props) => {
         {/* Content */}
         <div className="p-6 space-y-6 overflow-y-auto max-h-[60vh]">
           {/* Top Profile Summary */}
-          <div className="flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-6 pb-6 border-b border-slate-100">
-            {props.Image_Url && (
-              <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-indigo-50 shadow-md shrink-0 bg-slate-50">
-                <img
-                  src={props.Image_Url}
-                  alt={props.Name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            )}
+          <div className="flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-6 pb-6 border-b border-[#0B2545]/15">
+            <div className="w-24 h-24 rounded-none border border-[#0B2545]/25 flex items-center justify-center shrink-0 bg-[#0B2545]/5 text-[#00B4D8]">
+              <Users className="h-12 w-12 stroke-[1.2]" />
+            </div>
             
             <div className="flex-1 space-y-2 text-center sm:text-left">
-              <div className="inline-flex items-center space-x-1 bg-yellow-50 px-2.5 py-0.5 rounded-full border border-yellow-100">
-                <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                <span className="text-xs font-bold text-yellow-700">
+              <div className="inline-flex items-center space-x-1 bg-[#00B4D8]/10 px-2.5 py-0.5 rounded-none border border-[#00B4D8]/30">
+                <Star className="h-3.5 w-3.5 fill-[#00B4D8] text-[#00B4D8]" />
+                <span className="text-xs font-bold text-[#0B2545]">
                   {props.Rating} / 5.0 {language === "hi" ? "रेटिंग" : "Rating"}
                 </span>
               </div>
-              <h3 className="text-base font-extrabold text-slate-800">
+              <h3 className="text-base font-sans font-bold text-[#111827]">
                 {language === "hi" ? "सत्यापित कानूनी विशेषज्ञ" : "Verified Legal Specialist"}
               </h3>
             </div>
@@ -70,32 +64,32 @@ const Profile = (props) => {
             <InfoBlock
               title={language === "hi" ? "अदालत / स्थान" : "Court Location"}
               content={props.Location}
-              icon={<MapPin className="h-5 w-5 text-indigo-500" />}
+              icon={<MapPin className="h-5 w-5 text-[#0B2545]" />}
             />
             <InfoBlock
               title={language === "hi" ? "विशेषज्ञता" : "Specialization"}
               content={props.Specialization}
-              icon={<BookOpen className="h-5 w-5 text-indigo-500" />}
+              icon={<BookOpen className="h-5 w-5 text-[#0B2545]" />}
             />
             <InfoBlock
               title={language === "hi" ? "अनुभव" : "Experience"}
               content={props.Experience}
-              icon={<Award className="h-5 w-5 text-indigo-500" />}
+              icon={<Award className="h-5 w-5 text-[#0B2545]" />}
             />
             <InfoBlock 
               title={language === "hi" ? "शहर" : "City"} 
               content={props.City} 
-              icon={<MapPin className="h-5 w-5 text-indigo-500" />} 
+              icon={<MapPin className="h-5 w-5 text-[#0B2545]" />} 
             />
           </div>
 
           {/* Description Full Width */}
           {props.Description && (
-            <div className="bg-slate-50 border border-slate-100/80 p-5 rounded-2xl shadow-inner">
-              <h3 className="font-extrabold text-slate-900 mb-2.5 text-sm uppercase tracking-wider text-indigo-750">
+            <div className="bg-[#0B2545]/5 border border-[#0B2545]/15 p-5 rounded-none shadow-inner">
+              <h3 className="font-bold text-[#0B2545] mb-2.5 text-xs uppercase tracking-wider">
                 {language === "hi" ? "वकील विवरण" : "Advocate Description"}
               </h3>
-              <p className="text-xs text-slate-650 leading-relaxed whitespace-pre-wrap">
+              <p className="text-xs text-[#111827]/80 leading-relaxed whitespace-pre-wrap font-sans">
                 {props.Description}
               </p>
             </div>
@@ -103,17 +97,17 @@ const Profile = (props) => {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-slate-100 px-6 py-4 flex justify-end space-x-3 bg-slate-50/50">
+        <div className="border-t border-[#0B2545]/15 px-6 py-4 flex justify-end space-x-3 bg-[#F0F4F8]">
           <Button
             variant="outline"
-            className="rounded-xl border-slate-200 text-slate-700 hover:bg-slate-100 font-bold"
+            className="rounded-none border-[#0B2545]/20 text-[#111827] hover:bg-[#0B2545]/10 font-bold font-sans text-xs uppercase tracking-wider py-5"
             onClick={props.onClose}
           >
             {language === "hi" ? "बंद करें" : "Close"}
           </Button>
-          <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/10">
-            <a href="https://www.chatbase.co/chatbot-iframe/0CXRULDX-IJ6GaESy_Wy9" target="_blank" rel="noopener noreferrer">
-              {language === "hi" ? "संपर्क करें" : "Contact"}
+          <Button className="bg-transparent border border-[#0B2545] text-[#0B2545] hover:bg-[#0B2545] hover:text-[#F0F4F8] font-bold font-sans rounded-none text-xs uppercase tracking-wider py-5 shadow-none transition-all duration-300">
+            <a href="https://www.chatbase.co/chatbot-iframe/0CXRULDX-IJ6GaESy_Wy9" target="_blank" rel="noopener noreferrer" className="flex items-center">
+              {language === "hi" ? "संपर्क करें" : "Contact"} →
             </a>
           </Button>
         </div>
@@ -126,12 +120,12 @@ const Profile = (props) => {
 const InfoBlock = ({ title, content, icon }) => {
   return (
     <div className="flex items-start space-x-3">
-      <div className="p-2 bg-indigo-50 rounded-xl flex items-center justify-center shrink-0 shadow-sm border border-indigo-100/30">
+      <div className="p-2 bg-[#0B2545]/5 rounded-none flex items-center justify-center shrink-0 border border-[#0B2545]/10">
         {icon}
       </div>
       <div className="min-w-0">
-        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">{title}</h4>
-        <p className="text-sm font-extrabold text-slate-800 mt-1 break-words leading-tight">{content}</p>
+        <h4 className="text-xs font-bold text-[#111827]/55 uppercase tracking-widest">{title}</h4>
+        <p className="text-sm font-bold text-[#111827] mt-1 break-words leading-tight">{content}</p>
       </div>
     </div>
   );

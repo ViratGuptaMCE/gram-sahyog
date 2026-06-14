@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { MessageSquare, Send, User, Bot, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import LegalLoader from "./LegalLoader";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL.replace(/\/$/, "") : "/api";
 
@@ -193,45 +194,52 @@ const QASection = () => {
   };
 
   return (
-    <section id="qa" className="py-20 bg-white relative rounded-3xl my-6 border border-slate-100/50">
-      <div className="absolute top-[-5%] left-[-5%] w-[25%] h-[25%] rounded-full bg-emerald-100/20 blur-[80px] pointer-events-none"></div>
+    <section id="qa" className="py-24 bg-[#F0F4F8] relative">
+      <div className="absolute left-0 right-0 top-0 h-[1px] bg-[#111827]/15"></div>
       
-      <div className="max-w-4xl mx-auto px-4 sm:px-6">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-4">
+      <div className="max-w-4xl mx-auto px-6 sm:px-8">
+        <div className="text-center mb-16">
+          <div className="inline-flex items-center space-x-3 mb-4">
+            <span className="h-[1px] w-8 bg-[#0B2545]/50"></span>
+            <span className="text-xs font-bold text-[#0B2545] tracking-[4px] uppercase font-sans">
+              {language === "hi" ? "कानूनी एआई सहायक" : "LEGAL AI ASSISTANT"}
+            </span>
+          </div>
+
+          <h2 className="text-4xl md:text-5xl font-sans font-black text-[#111827] leading-tight mb-4">
             {language === "hi" ? (
               <>
-                कानूनी सहायक <span className="text-gradient">(AI Q&A)</span>
+                कानूनी सहायक <span className="text-[#0B2545]">(AI Q&A)</span>
               </>
             ) : (
               <>
-                Legal AI <span className="text-gradient">Q&A Assistant</span>
+                Legal AI <span className="text-[#0B2545]">Q&A Assistant</span>
               </>
             )}
           </h2>
-          <p className="text-lg text-slate-500 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-sm md:text-base text-[#111827]/60 max-w-2xl mx-auto leading-relaxed font-sans font-light tracking-wide">
             {language === "hi"
               ? "हिंदी या अंग्रेजी में कोई भी कानूनी प्रश्न पूछें और तत्कालिक सहायता सलाह प्राप्त करें।"
               : "Consult our legal model on labor laws, contract disputes, family rights, or civil issues."}
           </p>
         </div>
 
-        <Card className="mb-8 border border-slate-100/80 shadow-2xl shadow-slate-100 rounded-3xl overflow-hidden bg-white p-2">
-          <CardHeader className="pb-4">
-            <CardTitle className="flex items-center space-x-2 text-xl font-extrabold text-slate-800">
-              <MessageSquare className="h-5 w-5 text-indigo-600 animate-pulse" />
+        <Card className="mb-8 border border-[#111827]/15 shadow-none rounded-none bg-transparent overflow-hidden p-0">
+          <CardHeader className="pb-4 p-6">
+            <CardTitle className="flex items-center space-x-3 text-lg font-sans font-bold text-[#111827] uppercase tracking-wider">
+              <MessageSquare className="h-4 w-4 text-[#0B2545]" />
               <span>{language === "hi" ? "अपना प्रश्न पूछें" : "Consult AI Companion"}</span>
             </CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardDescription className="text-xs text-[#111827]/60 font-sans">
               {language === "hi" 
                 ? "यहाँ अपना प्रश्न विस्तार से लिखें" 
                 : "Type your query below in Hindi or English"}
             </CardDescription>
           </CardHeader>
           
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 p-6 pt-0">
             <div>
-              <Label htmlFor="question" className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+              <Label htmlFor="question" className="text-xs font-bold text-[#0B2545] uppercase tracking-widest font-sans">
                 {language === "hi" ? "आपका प्रश्न" : "Your Question"}
               </Label>
               <Textarea
@@ -241,24 +249,24 @@ const QASection = () => {
                   : "e.g., What are the legal steps if a tenant refuses to pay rent?"}
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
-                className="mt-2 min-h-[110px] rounded-2xl border-slate-200 focus:border-indigo-400 focus:ring-indigo-400/5 placeholder:text-slate-400 resize-none p-4"
+                className="mt-2 min-h-[110px] rounded-none border border-[#111827]/20 focus:border-[#0B2545] focus:ring-0 placeholder:text-[#111827]/40 bg-[#F0F4F8]/10 p-4 font-sans text-xs tracking-wide leading-relaxed text-[#111827] resize-none"
               />
             </div>
 
             <Button
               onClick={handleSubmitQuestion}
               disabled={!question.trim() || isLoading}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl py-6 shadow-xl shadow-indigo-600/10 hover:shadow-indigo-600/25 transition-all hover:scale-[1.01] active:scale-95 duration-200"
+              className="w-full bg-[#111827] hover:bg-[#0B2545] text-[#F0F4F8] font-semibold tracking-wider font-sans uppercase text-xs rounded-none py-6 shadow-sm transition-all duration-300 flex items-center justify-center space-x-2"
               size="lg"
             >
               {isLoading ? (
                 <span className="flex items-center space-x-2">
-                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin text-[#F0F4F8]" />
                   <span>{language === "hi" ? "AI उत्तर तैयार कर रहा है..." : "AI is writing response..."}</span>
                 </span>
               ) : (
                 <span className="flex items-center justify-center space-x-2">
-                  <Send className="h-4 w-4" />
+                  <Send className="h-3.5 w-3.5" />
                   <span>{language === "hi" ? "प्रश्न सबमिट करें" : "Submit Question"}</span>
                 </span>
               )}
@@ -267,38 +275,49 @@ const QASection = () => {
         </Card>
 
         <div className="space-y-6">
+          {isLoading && (
+            <Card className="border border-dashed border-[#111827]/30 rounded-none bg-[#F0F4F8]/10 p-8 text-center shadow-none animate-pulse">
+              <LegalLoader 
+                message={language === "hi" ? "AI उत्तर तैयार कर रहा है..." : "AI is writing response..."} 
+                subMessage={language === "hi" ? "कृपया कुछ क्षण प्रतीक्षा करें, हम कानून संहिताओं का विश्लेषण कर रहे हैं..." : "Please wait as we analyze the legal codes..."} 
+              />
+            </Card>
+          )}
+
           {conversations.map((conv) => (
-            <Card key={conv.id} className="border border-slate-100 shadow-xl shadow-slate-100 rounded-3xl overflow-hidden bg-white p-2 animate-fade-in">
+            <Card key={conv.id} className="border border-[#111827]/15 shadow-none rounded-none bg-transparent overflow-hidden p-0 animate-fade-in">
               <CardContent className="p-6 space-y-6">
+                
                 {/* Question bubble */}
                 <div className="flex items-start space-x-4">
-                  <div className="p-3 bg-indigo-50 rounded-2xl flex items-center justify-center shrink-0 shadow-sm border border-indigo-100/50">
-                    <User className="h-5 w-5 text-indigo-600" />
+                  <div className="p-3 bg-[#0B2545]/5 rounded-none flex items-center justify-center shrink-0 border border-[#0B2545]/15 text-[#0B2545]">
+                    <User className="h-4 w-4" />
                   </div>
                   <div className="flex-1">
-                    <h4 className="font-extrabold text-xs text-slate-450 uppercase tracking-widest mb-1.5">
+                    <h4 className="font-bold text-xs text-[#0B2545] uppercase tracking-widest mb-1.5 font-sans">
                       {language === "hi" ? "आपका प्रश्न" : "Your Question"}
                     </h4>
-                    <div className="text-slate-800 bg-indigo-50/20 border border-indigo-100/30 p-4 rounded-2xl rounded-tl-none leading-relaxed text-sm shadow-sm">
+                    <div className="text-[#111827] bg-[#0B2545]/5 border border-[#0B2545]/10 p-4 rounded-none leading-relaxed text-xs shadow-sm font-sans tracking-wide">
                       {conv.question}
                     </div>
                   </div>
                 </div>
 
                 {/* Answer bubble */}
-                <div className="flex items-start space-x-4 pt-4 border-t border-slate-50">
-                  <div className="p-3 bg-emerald-50 rounded-2xl flex items-center justify-center shrink-0 shadow-sm border border-emerald-100/50">
-                    <Bot className="h-5 w-5 text-emerald-600" />
+                <div className="flex items-start space-x-4 pt-4 border-t border-[#111827]/10">
+                  <div className="p-3 bg-[#111827]/5 rounded-none flex items-center justify-center shrink-0 border border-[#111827]/15 text-[#111827]">
+                    <Bot className="h-4 w-4" />
                   </div>
                   <div className="flex-1">
-                    <h4 className="font-extrabold text-xs text-slate-450 uppercase tracking-widest mb-1.5">
+                    <h4 className="font-bold text-xs text-[#111827]/60 uppercase tracking-widest mb-1.5 font-sans">
                       {language === "hi" ? "कानूनी सलाह (AI)" : "Legal AI Counsel"}
                     </h4>
-                    <div className="text-slate-850 bg-emerald-50/20 border border-emerald-100/30 p-5 rounded-2xl rounded-tl-none leading-relaxed text-sm shadow-sm">
+                    <div className="text-[#111827] bg-transparent border border-[#0B2545]/15 p-5 rounded-none leading-relaxed text-xs shadow-sm font-sans tracking-wide">
                       {renderMarkdown(conv.answer)}
                     </div>
                   </div>
                 </div>
+                
               </CardContent>
             </Card>
           ))}

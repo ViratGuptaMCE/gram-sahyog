@@ -11,6 +11,7 @@ import { Star, Upload, FileText, CheckCircle, Volume2, Languages, Loader2 } from
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
+import LegalLoader from "./LegalLoader";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL.replace(/\/$/, "") : "/api";
 
@@ -153,12 +154,23 @@ const DocumentUploadV2 = () => {
   const [originalAnalysis, setOriginalAnalysis] = useState(""); // Store original English analysis for toggling
   const audioPlayerRef = useRef(null);
 
-  // Sync with global language toggles
+  // Sync with global language toggles & preload voices
   useEffect(() => {
     const handleLangChange = () => {
       setLanguage(localStorage.getItem("language") || "hi");
     };
     window.addEventListener("languageChange", handleLangChange);
+
+    // Preload speechSynthesis voices in background
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.getVoices();
+      if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = () => {
+          window.speechSynthesis.getVoices();
+        };
+      }
+    }
+
     return () => window.removeEventListener("languageChange", handleLangChange);
   }, []);
 
@@ -285,34 +297,65 @@ const DocumentUploadV2 = () => {
   };
 
   // HTML Audio based sequential speech player using Google Translate TTS (CORS-friendly, natural audio)
-  const playGoogleTTS = (text, lang) => {
+  const playGoogleTTS = (text, lang, showToast = true) => {
     setIsSpeaking(true);
-    toast({
-      title: language === "hi" ? "वाचन प्रारंभ" : "Speech Started",
-      description: language === "hi" ? "एआई सहायक विश्लेषण पढ़ रहा है..." : "AI assistant is reading...",
-    });
+    if (showToast) {
+      toast({
+        title: language === "hi" ? "वाचन प्रारंभ" : "Speech Started",
+        description: language === "hi" ? "एआई सहायक विश्लेषण पढ़ रहा है..." : "AI assistant is reading...",
+      });
+    }
 
     const cleanText = stripMarkdownForSpeech(text);
     
-    // Chunking text into ~150 character segments (max limit is 200)
+    // Chunking text into <= 140 character segments safely (max limit is 200)
     const chunks = [];
-    const sentenceBoundaryRegex = /[^।,.!?\n]+[।,.!?\n]?/g;
-    let match;
-    let currentChunk = "";
+    const maxChunkSize = 140;
+    let remainingText = cleanText;
 
-    while ((match = sentenceBoundaryRegex.exec(cleanText)) !== null) {
-      const segment = match[0];
-      if ((currentChunk + segment).length > 150) {
-        if (currentChunk.trim()) {
-          chunks.push(currentChunk.trim());
-        }
-        currentChunk = segment;
-      } else {
-        currentChunk += segment;
+    while (remainingText.length > 0) {
+      if (remainingText.length <= maxChunkSize) {
+        chunks.push(remainingText.trim());
+        break;
       }
-    }
-    if (currentChunk.trim()) {
-      chunks.push(currentChunk.trim());
+
+      let splitIdx = -1;
+      const sub = remainingText.substring(0, maxChunkSize);
+      
+      const punctuationMarks = ['।', '.', '?', '!'];
+      for (const mark of punctuationMarks) {
+        const idx = sub.lastIndexOf(mark);
+        if (idx > splitIdx) {
+          splitIdx = idx + 1;
+        }
+      }
+
+      if (splitIdx === -1) {
+        const clauseMarks = [',', ';', ':'];
+        for (const mark of clauseMarks) {
+          const idx = sub.lastIndexOf(mark);
+          if (idx > splitIdx) {
+            splitIdx = idx + 1;
+          }
+        }
+      }
+
+      if (splitIdx === -1) {
+        const lastSpace = sub.lastIndexOf(' ');
+        if (lastSpace > 20) {
+          splitIdx = lastSpace + 1;
+        }
+      }
+
+      if (splitIdx === -1) {
+        splitIdx = maxChunkSize;
+      }
+
+      const chunk = remainingText.substring(0, splitIdx).trim();
+      if (chunk) {
+        chunks.push(chunk);
+      }
+      remainingText = remainingText.substring(splitIdx);
     }
 
     if (chunks.length === 0) {
@@ -321,39 +364,46 @@ const DocumentUploadV2 = () => {
     }
 
     let currentIdx = 0;
+    let isAborted = false;
 
     const playNext = () => {
+      if (isAborted) return;
+
       if (currentIdx >= chunks.length) {
         setIsSpeaking(false);
         audioPlayerRef.current = null;
         return;
       }
 
-      // Google Translate Public TTS URL
       const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${lang}&client=tw-ob&q=${encodeURIComponent(chunks[currentIdx])}`;
       const audio = new Audio(ttsUrl);
       audioPlayerRef.current = audio;
 
       audio.onended = () => {
-        currentIdx++;
-        playNext();
+        if (!isAborted) {
+          currentIdx++;
+          playNext();
+        }
       };
 
-      audio.onerror = (e) => {
-        console.error("Google TTS chunk error, skipping to next:", e);
-        currentIdx++;
-        playNext();
-      };
-
-      audio.play().catch((err) => {
-        console.error("Audio playback failed:", err);
+      const handlePlaybackError = (err) => {
+        if (isAborted) return;
+        isAborted = true;
+        console.error("Google TTS error, aborting:", err);
         setIsSpeaking(false);
+        if (audioPlayerRef.current) {
+          audioPlayerRef.current.pause();
+          audioPlayerRef.current = null;
+        }
         toast({
           title: language === "hi" ? "वाचन त्रुटि" : "Speech Error",
-          description: language === "hi" ? "ऑडियो वाचन प्रारंभ नहीं किया जा सका।" : "Could not play audio track.",
+          description: language === "hi" ? "ऑडियो वाचन पूर्ण नहीं किया जा सका।" : "Could not complete audio playback.",
           variant: "destructive"
         });
-      });
+      };
+
+      audio.onerror = handlePlaybackError;
+      audio.play().catch(handlePlaybackError);
     };
 
     playNext();
@@ -363,7 +413,6 @@ const DocumentUploadV2 = () => {
     if (!analysis) return;
 
     if (isSpeaking) {
-      // Cancel everything
       window.speechSynthesis.cancel();
       if (audioPlayerRef.current) {
         audioPlayerRef.current.pause();
@@ -377,40 +426,54 @@ const DocumentUploadV2 = () => {
       return;
     }
 
-    // For Hindi: always use Google Translate TTS (sounds much more human and bypasses empty OS voice packages)
-    if (language === "hi") {
-      playGoogleTTS(analysis, "hi");
-    } else {
-      // For English: Try SpeechSynthesis first, fallback to Google TTS if unavailable
-      window.speechSynthesis.cancel();
-      const cleanText = stripMarkdownForSpeech(analysis);
+    const cleanText = stripMarkdownForSpeech(analysis);
+    window.speechSynthesis.cancel();
+
+    // Check if browser has native speech synthesis voices loaded for the selected language
+    const currentVoices = window.speechSynthesis.getVoices();
+    const targetLang = language === "hi" ? "hi-IN" : "en-US";
+    
+    const hasLangVoice = currentVoices.some(
+      (voice) => 
+        voice.lang.toLowerCase().startsWith(language) ||
+        voice.name.toLowerCase().includes(language === "hi" ? "hindi" : "english")
+    );
+
+    if (hasLangVoice) {
       const utterance = new SpeechSynthesisUtterance(cleanText);
-      const currentVoices = window.speechSynthesis.getVoices();
+      utterance.lang = targetLang;
       
-      const englishVoice = currentVoices.find(
+      const matchedVoice = currentVoices.find(
         (voice) => 
-          voice.lang.toLowerCase().startsWith("en") || 
-          voice.name.toLowerCase().includes("english")
+          voice.lang.toLowerCase().startsWith(language) || 
+          voice.name.toLowerCase().includes(language === "hi" ? "hindi" : "english")
       );
-      if (englishVoice) {
-        utterance.voice = englishVoice;
+      if (matchedVoice) {
+        utterance.voice = matchedVoice;
       }
-      utterance.lang = "en-US";
 
       utterance.onstart = () => {
         setIsSpeaking(true);
         toast({
-          title: "Speech Started",
-          description: "AI assistant is reading document analysis...",
+          title: language === "hi" ? "वाचन प्रारंभ" : "Speech Started",
+          description: language === "hi" ? "एआई सहायक विश्लेषण पढ़ रहा है..." : "AI assistant is reading document analysis...",
         });
       };
-      utterance.onend = () => setIsSpeaking(false);
+
+      utterance.onend = () => {
+        setIsSpeaking(false);
+      };
+
       utterance.onerror = (e) => {
         console.error("SpeechSynthesis error, falling back to Google Translate TTS:", e);
-        playGoogleTTS(analysis, "en");
+        // Fallback to Google Translate TTS, but skip the duplicate toast
+        playGoogleTTS(analysis, language, false);
       };
 
       window.speechSynthesis.speak(utterance);
+    } else {
+      // Fallback directly to Google TTS if native voice is not installed
+      playGoogleTTS(analysis, language, true);
     }
   };
 
@@ -426,44 +489,51 @@ const DocumentUploadV2 = () => {
   }, [isSpeaking]);
 
   return (
-    <section id="upload" className="py-20 bg-slate-50/50 relative rounded-3xl my-6 border border-slate-100">
-      <div className="absolute top-[-10%] right-[-10%] w-[30%] h-[30%] rounded-full bg-indigo-200/20 blur-[90px] pointer-events-none"></div>
+    <section id="upload" className="py-24 bg-[#F0F4F8] relative">
+      <div className="absolute left-0 right-0 top-0 h-[1px] bg-[#111827]/15"></div>
       
-      <div className="max-w-4xl mx-auto px-4 sm:px-6">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-4">
+      <div className="max-w-4xl mx-auto px-6 sm:px-8">
+        <div className="text-center mb-16">
+          <div className="inline-flex items-center space-x-3 mb-4">
+            <span className="h-[1px] w-8 bg-[#0B2545]/50"></span>
+            <span className="text-xs font-bold text-[#0B2545] tracking-[4px] uppercase font-sans">
+              {language === "hi" ? "दस्तावेज़ विश्लेषक" : "DOCUMENT ANALYSIS"}
+            </span>
+          </div>
+          
+          <h2 className="text-4xl md:text-5xl font-sans font-black text-[#111827] leading-tight mb-4">
             {language === "hi" ? (
               <>
-                दस्तावेज़ <span className="text-gradient">विश्लेषण</span>
+                दस्तावेज़ <span className="text-[#0B2545]">विश्लेषण</span>
               </>
             ) : (
               <>
-                Document <span className="text-gradient">Analyzer</span>
+                Document <span className="text-[#0B2545]">Analyzer</span>
               </>
             )}
           </h2>
-          <p className="text-lg text-slate-500 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-sm md:text-base text-[#111827]/60 max-w-2xl mx-auto leading-relaxed font-sans font-light tracking-wide">
             {language === "hi"
               ? "दस्तावेज़ों को अपलोड करें और एआई की सहायता से उनका आसान अनुवाद और सारांश पाएं।"
               : "Upload contracts, agreements, or land deeds to extract key points and legal advice."}
           </p>
         </div>
 
-        <Card className="border border-slate-100/80 shadow-2xl shadow-slate-100 rounded-3xl overflow-hidden bg-white p-2">
-          <CardHeader className="pb-4">
-            <CardTitle className="flex items-center space-x-2 text-xl font-extrabold text-slate-800">
-              <Upload className="h-5 w-5 text-indigo-600 animate-bounce" />
+        <Card className="border border-[#111827]/15 shadow-none rounded-none bg-transparent overflow-hidden p-0">
+          <CardHeader className="pb-4 p-6">
+            <CardTitle className="flex items-center space-x-3 text-lg font-sans font-bold text-[#111827] uppercase tracking-wider">
+              <Upload className="h-4 w-4 text-[#0B2545]" />
               <span>{language === "hi" ? "नया दस्तावेज़ अपलोड करें" : "Upload Document"}</span>
             </CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardDescription className="text-xs text-[#111827]/60 font-sans">
               {language === "hi" 
                 ? "PDF फाइल चुनें (अधिकतम आकार 10MB)" 
                 : "Select or drag a PDF document (Max size 10MB)"}
             </CardDescription>
           </CardHeader>
           
-          <CardContent className="space-y-6">
-            <div className="border-2 border-dashed border-slate-200 hover:border-indigo-500 bg-slate-50/50 hover:bg-indigo-50/5 transition-all duration-300 rounded-2xl p-10 text-center cursor-pointer relative group">
+          <CardContent className="space-y-6 p-6 pt-0">
+            <div className="border border-dashed border-[#111827]/30 hover:border-[#0B2545] bg-[#F0F4F8]/10 hover:bg-[#0B2545]/5 transition-all duration-300 rounded-none p-10 text-center cursor-pointer relative group">
               <input
                 id="document"
                 type="file"
@@ -471,32 +541,32 @@ const DocumentUploadV2 = () => {
                 onChange={handleFileUpload}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
-              <Upload className="h-12 w-12 text-slate-400 mx-auto mb-4 group-hover:scale-110 group-hover:text-indigo-600 transition-all duration-300" />
-              <p className="text-sm font-extrabold text-slate-700">
+              <Upload className="h-10 w-10 text-[#0B2545]/60 mx-auto mb-4 group-hover:scale-105 group-hover:text-[#0B2545] transition-all duration-300" />
+              <p className="text-xs font-bold text-[#111827] uppercase tracking-wider font-sans">
                 {language === "hi" ? "यहाँ PDF फ़ाइल खींचें या ब्राउज़ करें" : "Drag & drop PDF here, or click to browse"}
               </p>
-              <p className="text-xs text-slate-400 mt-2">PDF (up to 10MB)</p>
+              <p className="text-xs text-[#111827]/45 mt-2 font-sans tracking-wide">PDF (up to 10MB)</p>
             </div>
 
             {file && (
-              <div className="flex items-center space-x-3 p-4 bg-emerald-50/80 border border-emerald-100 rounded-2xl animate-fade-in">
-                <div className="p-2 bg-emerald-100 rounded-lg">
-                  <FileText className="h-5 w-5 text-emerald-600" />
+              <div className="flex items-center space-x-3 p-4 bg-[#0B2545]/5 border border-[#0B2545]/15 rounded-none animate-fade-in">
+                <div className="p-2 bg-[#0B2545]/10 rounded-none">
+                  <FileText className="h-4 w-4 text-[#0B2545]" />
                 </div>
-                <span className="text-sm font-bold text-emerald-800 truncate max-w-xs">{file.name}</span>
-                <CheckCircle className="h-5 w-5 text-emerald-600 ml-auto" />
+                <span className="text-xs font-bold text-[#111827] truncate max-w-xs">{file.name}</span>
+                <CheckCircle className="h-4 w-4 text-[#0B2545] ml-auto" />
               </div>
             )}
 
             <Button
               onClick={analyzeDocument}
               disabled={!file || isAnalyzing}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl py-6 shadow-xl shadow-indigo-600/10 hover:shadow-indigo-600/25 transition-all hover:scale-[1.01] active:scale-95 duration-200"
+              className="w-full bg-[#111827] hover:bg-[#0B2545] text-[#F0F4F8] font-semibold tracking-wider font-sans uppercase text-xs rounded-none py-6 shadow-sm transition-all duration-300 flex items-center justify-center space-x-2"
               size="lg"
             >
               {isAnalyzing ? (
                 <span className="flex items-center space-x-2">
-                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin text-[#F0F4F8]" />
                   <span>{language === "hi" ? "दस्तावेज़ का विश्लेषण हो रहा है..." : "Analyzing Document..."}</span>
                 </span>
               ) : (
@@ -505,23 +575,29 @@ const DocumentUploadV2 = () => {
             </Button>
 
             {isAnalyzing && (
-              <div className="space-y-2 pt-2">
-                <div className="flex justify-between text-xs font-extrabold text-slate-500">
-                  <span>{language === "hi" ? "प्रगति" : "Progress"}</span>
-                  <span>{progress}%</span>
+              <div className="space-y-4 pt-4 border-t border-[#111827]/15 mt-4">
+                <LegalLoader 
+                  message={language === "hi" ? "दस्तावेज़ का विश्लेषण जारी है..." : "Analyzing Document..."} 
+                  subMessage={language === "hi" ? "हम नियमों और प्रावधानों का मिलान कर रहे हैं..." : "Verifying sections, regulations, and bylaws..."} 
+                />
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs font-bold text-[#0B2545] uppercase tracking-wider">
+                    <span>{language === "hi" ? "प्रगति" : "Progress"}</span>
+                    <span>{progress}%</span>
+                  </div>
+                  <Progress value={progress} className="w-full h-1.5 bg-[#0B2545]/10 rounded-none" />
                 </div>
-                <Progress value={progress} className="w-full h-2.5 bg-slate-100 rounded-full" />
               </div>
             )}
           </CardContent>
         </Card>
 
         {analysis && (
-          <Card className="mt-8 border border-slate-100 shadow-2xl shadow-slate-200/50 rounded-3xl overflow-hidden bg-white">
-            <CardHeader className="bg-slate-50/50 border-b border-slate-100/80 py-4 px-6">
+          <Card className="mt-8 border border-[#111827]/15 shadow-none rounded-none bg-transparent overflow-hidden p-0">
+            <CardHeader className="bg-[#F0F4F8]/30 border-b border-[#111827]/15 py-4 px-6">
               <div className="flex justify-between items-center flex-wrap gap-4">
-                <CardTitle className="text-emerald-700 font-extrabold text-lg flex items-center space-x-2">
-                  <CheckCircle className="h-5 w-5" />
+                <CardTitle className="text-[#0B2545] font-sans font-bold text-base flex items-center space-x-2">
+                  <CheckCircle className="h-4 w-4 text-[#0B2545]" />
                   <span>{language === "hi" ? "दस्तावेज़ विश्लेषण पूर्ण" : "Analysis Report"}</span>
                 </CardTitle>
                 <div className="flex space-x-2">
@@ -529,86 +605,86 @@ const DocumentUploadV2 = () => {
                     onClick={toggleLanguageText}
                     variant="outline"
                     size="sm"
-                    className="border-indigo-100 hover:bg-indigo-50/50 hover:border-indigo-300 text-indigo-700 font-bold rounded-xl shadow-sm"
+                    className="border-[#111827]/30 text-[#111827] hover:bg-[#0B2545]/5 hover:text-[#0B2545] hover:border-[#0B2545] bg-transparent rounded-none transition-all duration-300 uppercase font-sans text-xs tracking-widest font-bold h-8 px-3"
                     disabled={isAnalyzing}
                   >
-                    <Languages className="h-4 w-4 mr-1.5" />
+                    <Languages className="h-3.5 w-3.5 mr-1.5 text-[#0B2545]" />
                     {language === "en" ? "हिंदी संस्करण" : "English Version"}
                   </Button>
                   <Button
                     onClick={readAloud}
                     variant="outline"
                     size="sm"
-                    className={`border-indigo-100 hover:border-indigo-300 text-indigo-700 font-bold rounded-xl shadow-sm ${isSpeaking ? 'bg-indigo-50 border-indigo-300 text-indigo-800' : 'hover:bg-indigo-50/50'}`}
+                    className={`border-[#111827]/30 text-[#111827] hover:bg-[#0B2545]/5 hover:text-[#0B2545] hover:border-[#0B2545] bg-transparent rounded-none transition-all duration-300 uppercase font-sans text-xs tracking-widest font-bold h-8 px-3 ${isSpeaking ? 'bg-[#0B2545]/10 border-[#0B2545]' : ''}`}
                   >
-                    <Volume2 className="h-4 w-4 mr-1.5" />
+                    <Volume2 className="h-3.5 w-3.5 mr-1.5 text-[#0B2545]" />
                     {isSpeaking ? (language === "hi" ? "बोलना रोकें" : "Stop Speaking") : (language === "hi" ? "बोलकर सुनें" : "Read Aloud")}
                   </Button>
                 </div>
               </div>
             </CardHeader>
             
-            <CardContent className="pt-6 px-6 pb-6">
-              <div className="prose max-w-none text-slate-700 leading-relaxed bg-slate-50/40 p-6 rounded-2xl border border-slate-100 max-h-[500px] overflow-y-auto shadow-inner">
+            <CardContent className="p-6">
+              <div className="prose max-w-none text-[#111827] leading-relaxed bg-[#F0F4F8]/10 p-6 rounded-none border border-[#111827]/10 max-h-[500px] overflow-y-auto shadow-inner font-sans font-light text-sm tracking-wide">
                 {renderMarkdown(analysis)}
               </div>
             </CardContent>
 
             {recomLawyer && (
-              <CardContent className="border-t border-slate-100 pt-6 px-6 pb-6 bg-indigo-50/10">
-                <h3 className="text-base font-extrabold text-slate-800 mb-4 px-1">
+              <CardContent className="border-t border-[#111827]/15 p-6 bg-[#0B2545]/5">
+                <h3 className="text-xs font-bold text-[#0B2545] tracking-widest uppercase mb-4 px-1">
                   ⚖️ {language === "en" ? "Matched Professional Advocate" : "आपके केस के लिए मिलान विशेषज्ञ वकील"}
                 </h3>
                 
-                <div className="flex flex-col md:flex-row items-center justify-between w-full border border-indigo-100 shadow-md bg-white rounded-2xl p-6 hover:shadow-xl hover:border-indigo-200 transition-all duration-300 gap-6">
+                <div className="flex flex-col md:flex-row items-center justify-between w-full border border-[#111827]/15 bg-transparent rounded-none p-6 transition-all duration-300 gap-6 shadow-none">
                   <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left space-y-3">
                     <div>
-                      <span className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full">
+                      <span className="text-xs font-bold uppercase tracking-widest text-[#0B2545] bg-[#0B2545]/10 border border-[#0B2545]/20 px-3 py-1 rounded-none">
                         {language === "en" ? "AI Smart Recommendation" : "एआई स्मार्ट सुझाव"}
                       </span>
-                      <CardTitle className="text-xl font-extrabold text-slate-900 mt-3">
+                      <CardTitle className="text-xl font-sans font-bold text-[#111827] mt-3">
                         {recomLawyer.Name}
                       </CardTitle>
                     </div>
                     
-                    <div className="flex items-center space-x-1 bg-yellow-50 border border-yellow-100 rounded-full px-2.5 py-0.5">
-                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      <span className="text-xs font-bold text-yellow-700">
+                    <div className="flex items-center space-x-1 bg-[#0B2545]/10 border border-[#0B2545]/20 rounded-none px-2.5 py-0.5">
+                      <Star className="h-3.5 w-3.5 fill-[#00B4D8] text-[#00B4D8]" />
+                      <span className="text-xs font-bold text-[#0B2545]">
                         {recomLawyer.Rating} / 5.0
                       </span>
                     </div>
 
-                    <div className="space-y-1 text-sm text-slate-650">
+                    <div className="space-y-1 text-xs text-[#111827]/85 font-sans font-light tracking-wide">
                       <p className="flex items-center space-x-2 justify-center md:justify-start">
-                        <span className="text-indigo-500 font-bold">📍</span>
+                        <span className="text-[#0B2545]">📍</span>
                         <span>{recomLawyer.Location}</span>
                       </p>
                       <p className="flex items-center space-x-2 justify-center md:justify-start">
-                        <span className="text-indigo-500 font-bold">💼</span>
+                        <span className="text-[#0B2545]">💼</span>
                         <span>
                           <strong>{language === "en" ? "Domain" : "विशेषज्ञता"}:</strong> {recomLawyer.Specialization}
                         </span>
                       </p>
                       <p className="flex items-center space-x-2 justify-center md:justify-start">
-                        <span className="text-indigo-500 font-bold">🎓</span>
+                        <span className="text-[#0B2545]">🎓</span>
                         <span>
                           <strong>{language === "en" ? "Experience" : "अनुभव"}:</strong> {recomLawyer.Experience}
                         </span>
                       </p>
                     </div>
 
-                    <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/10 hover:scale-105 transition-all mt-2">
+                    <Button size="sm" className="bg-[#111827] hover:bg-[#0B2545] text-[#F0F4F8] font-semibold tracking-wider font-sans uppercase text-xs rounded-none py-4 transition-all duration-300 mt-2">
                       <a href="https://www.chatbase.co/chatbot-iframe/0CXRULDX-IJ6GaESy_Wy9" target="_blank" rel="noopener noreferrer">
                         {language === "en" ? "Contact Lawyer" : "वकील से संपर्क करें"}
                       </a>
                     </Button>
                   </div>
 
-                  <div className="w-28 h-28 rounded-2xl overflow-hidden border border-slate-100 shadow-md flex items-center justify-center bg-slate-50 shrink-0">
+                  <div className="w-28 h-28 rounded-none overflow-hidden border border-[#111827]/15 shadow-inner flex items-center justify-center bg-[#EFEAE2] shrink-0">
                     <img
                       src={recomLawyer.Image_Url}
                       alt={recomLawyer.Name}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover grayscale contrast-105"
                     />
                   </div>
                 </div>

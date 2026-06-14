@@ -164,6 +164,48 @@ Answer should be well in points and proper format.
             logger.error(f"Groq LLM Error: {e}")
             raise HTTPException(status_code=500, detail="Failed to answer question")
 
+def extract_text_via_ocr(pdf_contents: bytes) -> str:
+    try:
+        import fitz  # PyMuPDF
+        import pytesseract
+        from PIL import Image
+        import io
+        
+        logger.info("Attempting OCR on PDF pages...")
+        doc = fitz.open(stream=pdf_contents, filetype="pdf")
+        ocr_text = []
+        
+        # Limit to 10 pages for performance and timeout safety on free tier
+        max_pages = min(len(doc), 10)
+        for page_num in range(max_pages):
+            logger.info(f"Performing OCR on page {page_num + 1}/{max_pages}")
+            page = doc.load_page(page_num)
+            pix = page.get_pixmap(dpi=150)
+            img_data = pix.tobytes("png")
+            img = Image.open(io.BytesIO(img_data))
+            
+            # Use both English and Hindi for Tesseract OCR to support our bilingual content
+            page_text = pytesseract.image_to_string(img, lang="hin+eng")
+            ocr_text.append(page_text)
+            
+        full_text = "\n".join(ocr_text)
+        return full_text
+    except ImportError as e:
+        logger.error(f"OCR libraries missing: {e}")
+        raise RuntimeError("Required python libraries for OCR (pymupdf, pytesseract) are not installed on the server.")
+    except Exception as e:
+        err_msg = str(e).lower()
+        if "tesseract" in err_msg or "not found" in err_msg or "path" in err_msg or "executable" in err_msg:
+            logger.error("Tesseract binary not found on the system.")
+            raise RuntimeError(
+                "Tesseract OCR engine is not installed on this system. "
+                "Since you have deployed this backend on Render, please change your Web Service environment setting from 'Python' to 'Docker' "
+                "in the Render Dashboard. This will force Render to build the app using our Dockerfile (which installs Tesseract OCR "
+                "with English and Hindi packages natively)."
+            )
+        logger.error(f"OCR process failed: {e}")
+        raise RuntimeError(f"Failed to perform OCR on PDF: {str(e)}")
+
 @app.post("/process_pdf/")
 async def process_pdf(
     request: Request,
@@ -181,6 +223,19 @@ async def process_pdf(
         pdf_reader = PdfReader(io.BytesIO(contents))
         raw_text = ''.join([page.extract_text() or "" for page in pdf_reader.pages])
         logger.info("File successfully read")
+
+        # Fallback to OCR if extracted text is empty or too short (e.g. less than 100 characters)
+        if len(raw_text.strip()) < 100:
+            logger.info("Extracted text is empty or too short. Falling back to OCR...")
+            try:
+                raw_text = extract_text_via_ocr(contents)
+                logger.info("OCR successfully completed")
+            except RuntimeError as ocr_error:
+                logger.error(f"OCR Fallback failed: {ocr_error}")
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"PDF contains no readable text, and OCR fallback failed: {str(ocr_error)}"
+                )
 
         if not raw_text.strip():
             raise HTTPException(status_code=400, detail="PDF contains no readable text")

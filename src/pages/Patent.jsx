@@ -109,29 +109,34 @@ const Patent = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50/50 via-slate-50 to-emerald-50/30">
+    <div className="min-h-screen bg-[#F0F4F8] relative overflow-hidden selection:bg-[#0B2545]/20 selection:text-[#111827]">
+      {/* Neoclassical architectural grid accents */}
+      <div className="absolute left-[8%] top-0 bottom-0 w-[1px] bg-[#0B2545]/[0.03] pointer-events-none"></div>
+      <div className="absolute right-[8%] top-0 bottom-0 w-[1px] bg-[#0B2545]/[0.03] pointer-events-none"></div>
+
       <Header />
       
-      <main className="container mx-auto px-4 sm:px-6 py-12">
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center space-x-2 bg-indigo-50 border border-indigo-100 rounded-full px-4 py-1.5 mb-4 shadow-sm">
-            <Sparkles className="h-4 w-4 text-indigo-600 animate-spin" />
-            <span className="text-xs font-bold text-indigo-800 tracking-wide uppercase">
-              {language === "hi" ? "ग्रामीण नवाचार संवर्धन" : "Rural Innovation Promotion"}
+      <main className="container mx-auto px-6 sm:px-8 py-24 z-10 relative">
+        <div className="text-center mb-16">
+          <div className="inline-flex items-center space-x-3 mb-4">
+            <span className="h-[1px] w-8 bg-[#0B2545]/60"></span>
+            <span className="text-xs font-bold text-[#0B2545] tracking-[4px] uppercase font-sans">
+              {language === "hi" ? "नवाचार संरक्षण" : "RURAL INNOVATION"}
             </span>
           </div>
-          <h1 className="text-3xl md:text-5xl font-black tracking-tight text-slate-900 mb-3">
+
+          <h1 className="text-4xl md:text-5xl font-sans text-[#111827] font-bold leading-tight tracking-tight mb-4">
             {language === "hi" ? (
               <>
-                पेटेंट <span className="text-gradient">पंजीकरण पोर्टल</span>
+                पेटेंट <span className="text-[#0B2545]">पंजीकरण पोर्टल</span>
               </>
             ) : (
               <>
-                Patent <span className="text-gradient">Filing Portal</span>
+                Patent <span className="text-[#0B2545]">Filing Portal</span>
               </>
             )}
           </h1>
-          <p className="text-slate-500 max-w-xl mx-auto text-sm md:text-base">
+          <p className="text-sm md:text-base text-[#111827]/70 max-w-xl mx-auto leading-relaxed font-sans font-light tracking-wide">
             {language === "hi"
               ? "ग्रामीण नवप्रवर्तकों के लिए अपने आविष्कारों का पेटेंट आवेदन करने और ट्रैक करने का सरल मंच।"
               : "Easy workflows for local inventors to file patents, protect intellectual property, and track claims."}
@@ -139,24 +144,24 @@ const Patent = () => {
         </div>
 
         {!isSubmitted ? (
-          <Card className="max-w-3xl mx-auto border border-slate-100 shadow-2xl shadow-slate-100 rounded-3xl overflow-hidden bg-white mb-8 p-2">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-xl font-extrabold text-slate-800 flex items-center space-x-2">
-                <FileUp className="h-5 w-5 text-indigo-600" />
+          <Card className="max-w-3xl mx-auto border border-[#0B2545]/15 shadow-none rounded-none bg-transparent overflow-hidden p-0 mb-12">
+            <CardHeader className="pb-4 p-6">
+              <CardTitle className="text-lg font-sans font-bold text-[#111827] flex items-center space-x-3">
+                <FileUp className="h-4 w-4 text-[#0B2545]" />
                 <span>{language === "hi" ? "आवेदन प्रपत्र" : "Application Form"}</span>
               </CardTitle>
-              <CardDescription className="text-slate-400">
+              <CardDescription className="text-xs text-[#111827]/60 font-sans">
                 {language === "hi"
                   ? "कृपया अपने आविष्कार और व्यक्तिगत संपर्क का सटीक विवरण भरें।"
                   : "Provide accurate description and supporting documents for your intellectual claim."}
               </CardDescription>
             </CardHeader>
             
-            <CardContent>
+            <CardContent className="p-6 pt-0">
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <Label htmlFor="name" className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                    <Label htmlFor="name" className="text-xs font-bold text-[#0B2545] uppercase tracking-widest font-sans">
                       {language === "hi" ? "पूरा नाम" : "Full Name"} *
                     </Label>
                     <Input
@@ -165,11 +170,11 @@ const Patent = () => {
                       value={formData.name}
                       onChange={handleChange}
                       required
-                      className="mt-2 rounded-2xl border-slate-200 h-11 bg-slate-50/30"
+                      className="mt-2 rounded-none border-[#0B2545]/20 h-11 bg-transparent font-sans text-xs text-[#111827]"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="email" className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                    <Label htmlFor="email" className="text-xs font-bold text-[#0B2545] uppercase tracking-widest font-sans">
                       {language === "hi" ? "ईमेल पता" : "Email Address"} *
                     </Label>
                     <Input
@@ -179,14 +184,14 @@ const Patent = () => {
                       value={formData.email}
                       onChange={handleChange}
                       required
-                      className="mt-2 rounded-2xl border-slate-200 h-11 bg-slate-50/30"
+                      className="mt-2 rounded-none border-[#0B2545]/20 h-11 bg-transparent font-sans text-xs text-[#111827]"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <Label htmlFor="phone" className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                    <Label htmlFor="phone" className="text-xs font-bold text-[#0B2545] uppercase tracking-widest font-sans">
                       {language === "hi" ? "मोबाइल नंबर" : "Phone Number"} *
                     </Label>
                     <Input
@@ -196,11 +201,11 @@ const Patent = () => {
                       value={formData.phone}
                       onChange={handleChange}
                       required
-                      className="mt-2 rounded-2xl border-slate-200 h-11 bg-slate-50/30"
+                      className="mt-2 rounded-none border-[#0B2545]/20 h-11 bg-transparent font-sans text-xs text-[#111827]"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="address" className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                    <Label htmlFor="address" className="text-xs font-bold text-[#0B2545] uppercase tracking-widest font-sans">
                       {language === "hi" ? "पूरा पता" : "Address"} *
                     </Label>
                     <Input
@@ -209,13 +214,13 @@ const Patent = () => {
                       value={formData.address}
                       onChange={handleChange}
                       required
-                      className="mt-2 rounded-2xl border-slate-200 h-11 bg-slate-50/30"
+                      className="mt-2 rounded-none border-[#0B2545]/20 h-11 bg-transparent font-sans text-xs text-[#111827]"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="patentTitle" className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                  <Label htmlFor="patentTitle" className="text-xs font-bold text-[#0B2545] uppercase tracking-widest font-sans">
                     {language === "hi" ? "आविष्कार का शीर्षक" : "Patent Title"} *
                   </Label>
                   <Input
@@ -224,12 +229,12 @@ const Patent = () => {
                     value={formData.patentTitle}
                     onChange={handleChange}
                     required
-                    className="mt-2 rounded-2xl border-slate-200 h-11 bg-slate-50/30"
+                    className="mt-2 rounded-none border-[#0B2545]/20 h-11 bg-transparent font-sans text-xs text-[#111827]"
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="patentDescription" className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                  <Label htmlFor="patentDescription" className="text-xs font-bold text-[#0B2545] uppercase tracking-widest font-sans">
                     {language === "hi" ? "आविष्कार का विस्तृत विवरण" : "Patent Description"} *
                   </Label>
                   <Textarea
@@ -239,60 +244,60 @@ const Patent = () => {
                     onChange={handleChange}
                     required
                     rows="5"
-                    className="mt-2 rounded-2xl border-slate-200 placeholder:text-slate-400 resize-none p-4"
+                    className="mt-2 rounded-none border border-[#0B2545]/20 focus:border-[#0B2545] focus:ring-0 placeholder:text-[#111827]/40 bg-transparent p-4 font-sans text-xs tracking-wide leading-relaxed text-[#111827] resize-none"
                   />
                 </div>
 
                 <div>
-                  <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                    {language === "hi" ? "सहायक दस्तावेज़ अपलोड करें (PDF या वीडियो)" : "Upload Supporting Documents (PDF or Video)"} *
+                  <Label className="text-xs font-bold text-[#0B2545] uppercase tracking-widest font-sans">
+                    {language === "hi" ? "सहायक दस्तावेज अपलोड करें (PDF या वीडियो)" : "Upload Supporting Documents (PDF or Video)"} *
                   </Label>
                   <Input
                     type="file"
                     accept=".pdf,.mp4,.mov,.avi"
                     onChange={handleFileChange}
                     required
-                    className="mt-2 rounded-2xl border-slate-200 h-11 bg-slate-50/30"
+                    className="mt-2 rounded-none border-[#0B2545]/20 h-11 bg-transparent font-sans text-xs text-[#111827] pt-2"
                   />
-                  <p className="text-[10px] text-slate-400 mt-2 font-bold uppercase tracking-wider">
+                  <p className="text-xs text-[#111827]/50 mt-2 font-bold uppercase tracking-wider font-sans">
                     {language === "hi" ? "स्वीकृत प्रारूप: PDF, MP4, MOV, AVI" : "Accepted formats: PDF, MP4, MOV, AVI"}
                   </p>
                 </div>
 
                 <Button
                   type="submit"
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl py-6 shadow-xl shadow-indigo-600/10 hover:shadow-indigo-600/25 transition-all hover:scale-[1.01] active:scale-95 duration-200"
+                  className="w-full bg-transparent border border-[#0B2545] hover:bg-[#0B2545] text-[#0B2545] hover:text-[#F0F4F8] font-semibold tracking-wider font-sans uppercase text-xs rounded-none py-6 transition-all duration-300"
                 >
-                  {language === "hi" ? "आवेदन जमा करें" : "Submit Patent Application"}
+                  {language === "hi" ? "आवेदन जमा करें" : "Submit Patent Application"} →
                 </Button>
               </form>
             </CardContent>
           </Card>
         ) : (
-          <Card className="max-w-3xl mx-auto border border-slate-100 shadow-2xl shadow-slate-100 rounded-3xl overflow-hidden bg-white mb-8 p-6 text-center animate-fade-in">
-            <div className="text-emerald-500 mb-4">
-              <CheckCircle2 className="h-16 w-16 mx-auto animate-bounce" />
+          <Card className="max-w-3xl mx-auto border border-[#0B2545]/15 shadow-none rounded-none bg-transparent overflow-hidden mb-12 p-6 text-center animate-fade-in">
+            <div className="text-[#0B2545] mb-4">
+              <CheckCircle2 className="h-12 w-12 mx-auto animate-bounce" />
             </div>
-            <h2 className="text-2xl font-extrabold text-slate-800 mb-2">
+            <h2 className="text-2xl font-sans font-bold text-[#111827] mb-2">
               {language === "hi" ? "आवेदन सफलतापूर्वक जमा हुआ!" : "Application Submitted Successfully!"}
             </h2>
-            <p className="text-slate-500 mb-6 text-sm">
+            <p className="text-xs text-[#111827]/70 mb-6 font-sans">
               {language === "hi" 
                 ? "आपका पेटेंट आवेदन प्राप्त हो गया है और समीक्षा के लिए तैयार है।" 
                 : "Your patent application has been received and is currently queued for legal validation."}
             </p>
             
-            <div className="bg-indigo-50/60 border border-indigo-100 rounded-2xl p-6 max-w-md mx-auto">
-              <p className="font-bold text-slate-500 text-xs uppercase tracking-widest">
+            <div className="bg-[#0B2545]/5 border border-[#0B2545]/15 rounded-none p-6 max-w-md mx-auto">
+              <p className="font-bold text-[#0B2545] text-xs uppercase tracking-widest font-sans">
                 {language === "hi" ? "आपका टिकट नंबर" : "Your Tracking Ticket"}
               </p>
-              <p className="text-2xl font-black text-indigo-700 mt-1 font-mono tracking-wider">{ticketNumber}</p>
-              <p className="mt-3 text-xs text-slate-650">
-                {language === "hi" ? "वर्तमान स्थिति" : "Current Status"}: <span className="font-extrabold text-indigo-600 bg-white border border-indigo-100 px-2 py-0.5 rounded-md">Submitted</span>
+              <p className="text-2xl font-black text-[#111827] mt-1 font-mono tracking-wider">{ticketNumber}</p>
+              <p className="mt-3 text-xs text-[#111827]/75">
+                {language === "hi" ? "वर्तमान स्थिति" : "Current Status"}: <span className="font-bold text-[#0B2545] bg-[#0B2545]/10 border border-[#0B2545]/20 px-2 py-0.5 rounded-none">Submitted</span>
               </p>
             </div>
             
-            <p className="mt-6 text-xs text-slate-400 max-w-sm mx-auto">
+            <p className="mt-6 text-xs text-[#111827]/55 max-w-sm mx-auto font-sans leading-relaxed">
               {language === "hi" 
                 ? "कृपया इस टिकट नंबर को सुरक्षित रखें। आप इसका उपयोग स्थिति ट्रैक करने में कर सकते हैं।" 
                 : "Save this ticket number to monitor progress. You can query status anytime using the form below."}
@@ -300,23 +305,23 @@ const Patent = () => {
           </Card>
         )}
 
-        <Card className="max-w-3xl mx-auto border border-slate-100 shadow-2xl shadow-slate-100 rounded-3xl overflow-hidden bg-white p-2">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-xl font-extrabold text-slate-800 flex items-center space-x-2">
-              <Ticket className="h-5 w-5 text-indigo-600 animate-pulse" />
+        <Card className="max-w-3xl mx-auto border border-[#0B2545]/15 shadow-none rounded-none bg-transparent overflow-hidden p-0 mb-8">
+          <CardHeader className="pb-4 p-6">
+            <CardTitle className="text-lg font-sans font-bold text-[#111827] flex items-center space-x-3">
+              <Ticket className="h-4 w-4 text-[#0B2545]" />
               <span>{language === "hi" ? "अपने आवेदन को ट्रैक करें" : "Track Application"}</span>
             </CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardDescription className="text-xs text-[#111827]/60 font-sans">
               {language === "hi" 
                 ? "अपनी आवेदन स्थिति जांचने के लिए टिकट नंबर दर्ज करें" 
                 : "Provide your PAT-XXXXXXXX ticket to check current validation status"}
             </CardDescription>
           </CardHeader>
           
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 p-6 pt-0">
             <form onSubmit={handleTrackSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="trackingNumber" className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                <Label htmlFor="trackingNumber" className="text-xs font-bold text-[#0B2545] uppercase tracking-widest font-sans">
                   {language === "hi" ? "टिकट संख्या दर्ज करें" : "Ticket Number"}
                 </Label>
                 <Input
@@ -326,34 +331,34 @@ const Patent = () => {
                   onChange={(e) => setTrackingNumber(e.target.value)}
                   placeholder="PAT-12345678"
                   required
-                  className="mt-2 rounded-2xl border-slate-200 h-11 bg-slate-50/30"
+                  className="mt-2 rounded-none border-[#0B2545]/20 h-11 bg-transparent font-sans text-xs text-[#111827]"
                 />
               </div>
               <Button
                 type="submit"
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl py-6 shadow-xl shadow-indigo-600/10 hover:shadow-indigo-600/25 transition-all hover:scale-[1.01] active:scale-95 duration-200"
+                className="w-full bg-transparent border border-[#0B2545] hover:bg-[#0B2545] text-[#0B2545] hover:text-[#F0F4F8] font-semibold tracking-wider font-sans uppercase text-xs rounded-none py-6 transition-all duration-300 flex items-center justify-center space-x-2"
               >
-                <Search className="h-4 w-4 mr-2" />
-                {language === "hi" ? "स्थिति जांचें" : "Check Status"}
+                <Search className="h-3.5 w-3.5 mr-2" />
+                <span>{language === "hi" ? "स्थिति जांचें" : "Check Status"} →</span>
               </Button>
             </form>
 
             {isTracking && (
-              <div className="mt-6 bg-slate-50/80 border border-slate-100 rounded-2xl p-6 animate-fade-in space-y-3">
-                <h3 className="font-extrabold text-slate-800 text-sm">
+              <div className="mt-6 bg-[#0B2545]/5 border border-[#0B2545]/15 rounded-none p-6 animate-fade-in space-y-3">
+                <h3 className="font-bold text-[#0B2545] text-xs uppercase tracking-widest font-sans">
                   {language === "hi" ? "आवेदन विवरण" : "Application Details"}
                 </h3>
-                <div className="space-y-1.5 text-xs text-slate-650">
+                <div className="space-y-1.5 text-xs text-[#111827]/85 font-sans font-light tracking-wide">
                   <p>
                     <span className="font-bold">{language === "hi" ? "टिकट नंबर" : "Ticket ID"}:</span>{" "}
-                    <span className="font-mono text-indigo-700 font-bold">{trackingNumber}</span>
+                    <span className="font-mono text-[#111827] font-bold">{trackingNumber}</span>
                   </p>
                   <p>
                     <span className="font-bold">{language === "hi" ? "स्थिति" : "Status"}:</span>{" "}
-                    <span className="font-extrabold text-emerald-600 bg-white border border-slate-100 px-2 py-0.5 rounded-md">{trackingStatus}</span>
+                    <span className="font-bold text-[#0B2545] bg-[#0B2545]/10 border border-[#0B2545]/20 px-2 py-0.5 rounded-none">{trackingStatus}</span>
                   </p>
                 </div>
-                <p className="text-xs text-slate-500 border-t border-slate-200/50 pt-2.5 leading-relaxed">
+                <p className="text-xs text-[#111827]/70 border-t border-[#0B2545]/15 pt-2.5 leading-relaxed font-sans font-light">
                   {trackingStatus === "Submitted" &&
                     (language === "hi" 
                       ? "आपका आवेदन सफलतापूर्वक प्राप्त कर लिया गया है और विधिक समीक्षा की प्रतीक्षा कर रहा है।" 
