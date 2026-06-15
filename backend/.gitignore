@@ -19,6 +19,7 @@ ENV/
 
 # Chroma database storage (local vector DB)
 lawyer_chroma_index/
+lawyer_faiss_index/
 *.db
 *.sqlite3
 

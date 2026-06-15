@@ -2,7 +2,9 @@ import pandas as pd
 import json
 import io
 import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 import logging
+import gc
 from typing import List
 
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request
@@ -13,7 +15,7 @@ from pydantic import BaseModel
 from PyPDF2 import PdfReader
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_chroma import Chroma
+from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from langchain_groq import ChatGroq
 from langchain_core.documents import Document
@@ -98,17 +100,17 @@ else:
 lawyer_df = pd.read_csv("lawyer.csv")
 logger.info("Lawyer database loaded from CSV")
 
-# Initialize / load lawyer Chroma index
-LAWYER_INDEX_PATH = "lawyer_chroma_index"
+# Initialize / load lawyer FAISS index
+LAWYER_INDEX_PATH = "lawyer_faiss_index"
 if os.path.exists(LAWYER_INDEX_PATH):
-    logger.info("Loading existing lawyer Chroma index from disk...")
-    lawyer_chroma = Chroma(
-        collection_name="lawyers",
-        persist_directory=LAWYER_INDEX_PATH,
-        embedding_function=embedding_model
+    logger.info("Loading existing lawyer FAISS index from disk...")
+    lawyer_index = FAISS.load_local(
+        folder_path=LAWYER_INDEX_PATH,
+        embeddings=embedding_model,
+        allow_dangerous_deserialization=True
     )
 else:
-    logger.info("Creating new lawyer Chroma index...")
+    logger.info("Creating new lawyer FAISS index...")
     documents = []
     for idx, row in lawyer_df.iterrows():
         spec = str(row.get('Specialization', '')).strip() if pd.notna(row.get('Specialization')) else ''
@@ -120,13 +122,12 @@ else:
         doc = Document(page_content=page_content, metadata={"name": name})
         documents.append(doc)
         
-    lawyer_chroma = Chroma.from_documents(
+    lawyer_index = FAISS.from_documents(
         documents=documents,
-        embedding=embedding_model,
-        persist_directory=LAWYER_INDEX_PATH,
-        collection_name="lawyers"
+        embedding=embedding_model
     )
-    logger.info("Lawyer Chroma index created and saved successfully.")
+    lawyer_index.save_local(LAWYER_INDEX_PATH)
+    logger.info("Lawyer FAISS index created and saved successfully.")
 
 class LLMWrapper:
     def __init__(self, llm_instance):
@@ -177,6 +178,13 @@ def extract_text_via_ocr(pdf_contents: bytes) -> str:
         from PIL import Image
         import io
         
+        # Explicitly configure tesseract command path on Linux if present
+        if os.name == 'posix':
+            for path in ['/usr/bin/tesseract', '/usr/local/bin/tesseract']:
+                if os.path.exists(path):
+                    pytesseract.pytesseract.tesseract_cmd = path
+                    break
+        
         logger.info("Attempting OCR on PDF pages...")
         doc = fitz.open(stream=pdf_contents, filetype="pdf")
         ocr_text = []
@@ -186,30 +194,32 @@ def extract_text_via_ocr(pdf_contents: bytes) -> str:
         for page_num in range(max_pages):
             logger.info(f"Performing OCR on page {page_num + 1}/{max_pages}")
             page = doc.load_page(page_num)
-            pix = page.get_pixmap(dpi=150)
+            # Dropping DPI to 100 drastically reduces memory usage while preserving text accuracy
+            pix = page.get_pixmap(dpi=100)
             img_data = pix.tobytes("png")
             img = Image.open(io.BytesIO(img_data))
             
             # Use both English and Hindi for Tesseract OCR to support our bilingual content
             page_text = pytesseract.image_to_string(img, lang="hin+eng")
             ocr_text.append(page_text)
+            # Clean up image variables explicitly in every loop cycle
+            del pix, img_data, img
             
         full_text = "\n".join(ocr_text)
         return full_text
     except ImportError as e:
-        logger.error(f"OCR libraries missing: {e}")
+        logger.exception("OCR libraries missing")
         raise RuntimeError("Required python libraries for OCR (pymupdf, pytesseract) are not installed on the server.")
     except Exception as e:
+        logger.exception("OCR process failed")
         err_msg = str(e).lower()
         if "tesseract" in err_msg or "not found" in err_msg or "path" in err_msg or "executable" in err_msg:
-            logger.error("Tesseract binary not found on the system.")
             raise RuntimeError(
-                "Tesseract OCR engine is not installed on this system. "
-                "Since you have deployed this backend on Render, please change your Web Service environment setting from 'Python' to 'Docker' "
+                "Tesseract OCR engine is not installed or not found on this system. "
+                "Since you have deployed this backend on Render, please make sure your Web Service environment is set to 'Docker' "
                 "in the Render Dashboard. This will force Render to build the app using our Dockerfile (which installs Tesseract OCR "
                 "with English and Hindi packages natively)."
             )
-        logger.error(f"OCR process failed: {e}")
         raise RuntimeError(f"Failed to perform OCR on PDF: {str(e)}")
 
 @app.post("/process_pdf/")
@@ -222,77 +232,62 @@ async def process_pdf(
     # Check PDF rate limit
     ip = request.client.host
     if pdf_limiter.is_rate_limited(ip):
-        raise HTTPException(status_code=429, detail="Too many PDF uploads. Please try again in a minute.")
+        raise HTTPException(status_code=429, detail="Too many PDF uploads. Try again soon.")
         
     try:
         contents = await file.read()
-        pdf_reader = PdfReader(io.BytesIO(contents))
-        raw_text = ''.join([page.extract_text() or "" for page in pdf_reader.pages])
-        logger.info("File successfully read")
+        # Streamline: Switch to PyMuPDF (fitz) for reading raw text too—it uses way less RAM than PyPDF2
+        import fitz
+        doc = fitz.open(stream=contents, filetype="pdf")
+        raw_text = "".join([page.get_text() or "" for page in doc])
+        logger.info("File successfully read via PyMuPDF")
 
         # Fallback to OCR if extracted text is empty or too short (e.g. less than 100 characters)
         if len(raw_text.strip()) < 100:
-            logger.info("Extracted text is empty or too short. Falling back to OCR...")
+            logger.info("Extracted text is empty or short. Running safe OCR fallback...")
             try:
                 raw_text = extract_text_via_ocr(contents)
-                logger.info("OCR successfully completed")
             except RuntimeError as ocr_error:
-                logger.error(f"OCR Fallback failed: {ocr_error}")
-                raise HTTPException(
-                    status_code=400, 
-                    detail=f"PDF contains no readable text, and OCR fallback failed: {str(ocr_error)}"
-                )
+                raise HTTPException(status_code=400, detail=str(ocr_error))
 
         if not raw_text.strip():
             raise HTTPException(status_code=400, detail="PDF contains no readable text")
 
         llm_chain = LLMWrapper(llm)
 
-        # Optimize: if PDF is small, bypass vector search entirely for maximum speed & accuracy
+        # Vector retrieval block
         if len(raw_text) < 40000:
-            logger.info("PDF text is small. Bypassing vector search for speed.")
-            answer = llm_chain.run(
-                input_documents=[raw_text],
-                question=query
-            )
+            logger.info("PDF text is small. Bypassing vector search entirely.")
+            answer = llm_chain.run(input_documents=[raw_text], question=query)
         else:
-            logger.info("PDF text is large. Using vector search.")
-            text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=2000,
-                chunk_overlap=200
-            )
+            logger.info("PDF text is large. Using ultra-light FAISS runtime vector storage.")
+            text_splitter = RecursiveCharacterTextSplitter(chunk_size=1500, chunk_overlap=150)
             texts = text_splitter.split_text(raw_text)
-            if not texts:
-                raise HTTPException(status_code=400, detail="Text splitting failed")
             
-            docsearch = Chroma.from_texts(texts, embedding=embedding_model) 
-            docs = docsearch.similarity_search(query, k=4)
-            del docsearch  # Explicitly delete the reference to free memory immediately after usage
-            logger.info("Embeddings generated and documents searched")
+            # Using FAISS here avoids the memory footprint and persistence locks
+            docsearch = FAISS.from_texts(texts, embedding=embedding_model)
+            docs = docsearch.similarity_search(query, k=3)
             answer = llm_chain.run(
                 input_documents=[doc.page_content for doc in docs],
                 question=query
             )
-        
-        logger.info("Answer generated")
+            # Explicit cleanup block
+            del docsearch, docs
+            gc.collect() # Force Python to clear memory allocations immediately
 
-        # Find the best matching lawyer locally with 0 LLM tokens using the Chroma index
-        search_query = query
-        if not search_query.strip():
-            search_query = answer[:1000]
-            
-        logger.info("Searching lawyer Chroma index...")
-        matched_docs = lawyer_chroma.similarity_search(search_query, k=5)
+        logger.info("Answer generated successfully")
+
+        # Local Database Search Block
+        df = lawyer_df.copy()
+        search_query = query if query.strip() else answer[:500]
+        matched_docs = lawyer_index.similarity_search(search_query, k=3) # Swapped k=5 to k=3 to minimize slice overhead
         matched_names = [doc.metadata.get("name") for doc in matched_docs if doc.metadata.get("name")]
         
-        df = lawyer_df.copy()
         if 'Experience_Years' not in df.columns:
             df['Experience_Years'] = df['Experience'].str.extract(r'(\d+)').astype(float).fillna(0).astype(int)
-            
         matched_df = df[df['Name'].isin(matched_names)]
         if matched_df.empty:
             matched_df = df
-            
         matched_df = matched_df.sort_values(by=['Rating', 'Experience_Years'], ascending=[False, False])
         best_lawyer = json.loads(matched_df.iloc[0].to_json())
 
@@ -522,9 +517,9 @@ async def get_answer(request: Request, body: QuestionRequest):
         
         lawyers_context = ""
         if is_asking_for_lawyer:
-            logger.info("User question triggers lawyer search. Querying Chroma...")
-            # Query the Chroma index for relevant advocates
-            matched_docs = lawyer_chroma.similarity_search(body.question, k=3)
+            logger.info("User question triggers lawyer search. Querying FAISS...")
+            # Query the FAISS index for relevant advocates
+            matched_docs = lawyer_index.similarity_search(body.question, k=3)
             
             # Format advocate profiles
             lawyer_profiles = []

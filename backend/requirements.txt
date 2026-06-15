@@ -6,7 +6,7 @@ pandas
 deep-translator
 groq
 langchain-groq
-langchain-chroma
+faiss-cpu
 langchain-huggingface
 langchain-core
 langchain-text-splitters
