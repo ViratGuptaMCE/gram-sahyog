@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Users, Star, MapPin, Award, Search, Loader2 } from 'lucide-react';
 import Profile from './Profile';
+import LawyerAvatar from './LawyerAvatar';
 import LegalLoader from './LegalLoader';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL.replace(/\/$/, "") : "/api";
@@ -232,8 +233,8 @@ const LawyerMatching = () => {
                 <Card key={idx} className="group hover:shadow-2xl hover:shadow-[#0B2545]/5 transition-all duration-500 border border-[#111827]/15 rounded-none bg-transparent overflow-hidden p-0 shadow-none hover:border-[#0B2545]/40">
                   <CardHeader className="p-6 pb-2 text-left">
                     <div className="flex items-center space-x-4">
-                      <div className="w-16 h-16 rounded-none border border-[#111827]/15 flex items-center justify-center shrink-0 bg-[#0B2545]/5 text-[#00B4D8] group-hover:bg-[#0B2545]/15 transition-all duration-300">
-                        <Users className="h-8 w-8 stroke-[1.2]" />
+                      <div className="w-16 h-16 rounded-none border border-[#111827]/15 flex items-center justify-center shrink-0 bg-[#0B2545]/5 text-[#00B4D8] group-hover:bg-[#0B2545]/15 transition-all duration-300 overflow-hidden">
+                        <LawyerAvatar src={lawyer.Image_Url} alt={lawyer.Name} sizeClass="h-8 w-8" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <CardTitle className="text-lg font-sans font-bold text-[#111827] truncate group-hover:text-[#0B2545] transition-colors">

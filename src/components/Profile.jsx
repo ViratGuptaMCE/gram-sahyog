@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Star, MapPin, Award, BookOpen, User, X, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import LawyerAvatar from "./LawyerAvatar";
 
 const Profile = (props) => {
   const [language, setLanguage] = useState(() => localStorage.getItem("language") || "hi");
@@ -42,8 +43,8 @@ const Profile = (props) => {
         <div className="p-6 space-y-6 overflow-y-auto max-h-[60vh]">
           {/* Top Profile Summary */}
           <div className="flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-6 pb-6 border-b border-[#0B2545]/15">
-            <div className="w-24 h-24 rounded-none border border-[#0B2545]/25 flex items-center justify-center shrink-0 bg-[#0B2545]/5 text-[#00B4D8]">
-              <Users className="h-12 w-12 stroke-[1.2]" />
+            <div className="w-24 h-24 rounded-none border border-[#0B2545]/25 flex items-center justify-center shrink-0 bg-[#0B2545]/5 text-[#00B4D8] overflow-hidden">
+              <LawyerAvatar src={props.Image_Url} alt={props.Name} sizeClass="h-12 w-12" />
             </div>
             
             <div className="flex-1 space-y-2 text-center sm:text-left">

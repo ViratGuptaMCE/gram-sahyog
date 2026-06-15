@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import LegalLoader from "./LegalLoader";
+import LawyerAvatar from "./LawyerAvatar";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL.replace(/\/$/, "") : "/api";
 
@@ -681,11 +682,7 @@ const DocumentUploadV2 = () => {
                   </div>
 
                   <div className="w-28 h-28 rounded-none overflow-hidden border border-[#111827]/15 shadow-inner flex items-center justify-center bg-[#EFEAE2] shrink-0">
-                    <img
-                      src={recomLawyer.Image_Url}
-                      alt={recomLawyer.Name}
-                      className="w-full h-full object-cover grayscale contrast-105"
-                    />
+                    <LawyerAvatar src={recomLawyer.Image_Url} alt={recomLawyer.Name} sizeClass="h-14 w-14" />
                   </div>
                 </div>
               </CardContent>

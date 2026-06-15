@@ -82,11 +82,11 @@ const Footer = () => {
               </li>
               <li className="flex items-center space-x-2.5">
                 <Mail className="h-3.5 w-3.5 text-[#00B4D8]" />
-                <span>help@nyaysahyog.gov.in</span>
+                <span>madewith.love@in</span>
               </li>
               <li className="flex items-center space-x-2.5">
                 <MapPin className="h-3.5 w-3.5 text-[#00B4D8]" />
-                <span>{language === "hi" ? "नई दिल्ली, भारत" : "New Delhi, India"}</span>
+                <span>{language === "hi" ? "दिल्ली, भारत" : "Delhi, India"}</span>
               </li>
             </ul>
           </div>

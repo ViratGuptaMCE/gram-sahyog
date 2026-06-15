@@ -8,7 +8,6 @@ groq
 langchain-groq
 langchain-chroma
 langchain-huggingface
-sentence-transformers
 langchain-core
 langchain-text-splitters
 python-dotenv

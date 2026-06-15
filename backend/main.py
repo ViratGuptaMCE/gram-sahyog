@@ -14,7 +14,7 @@ from PyPDF2 import PdfReader
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from langchain_groq import ChatGroq
 from langchain_core.documents import Document
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
@@ -74,11 +74,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize local HuggingFace Embeddings
-logger.info("Initializing HuggingFace Embeddings...")
-embedding_model = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2",
-    model_kwargs={'device': 'cpu'}
+# Initialize HuggingFace Endpoint Embeddings (runs on HuggingFace cloud, super lightweight, uses < 10MB RAM)
+logger.info("Initializing HuggingFace Endpoint Embeddings...")
+hf_token = os.getenv("HUGGINGFACE_TOKEN") or os.getenv("HUGGINGFACEHUB_API_TOKEN") or os.getenv("HF_TOKEN")
+embedding_model = HuggingFaceEndpointEmbeddings(
+    model="sentence-transformers/all-MiniLM-L6-v2",
+    huggingfacehub_api_token=hf_token
 )
 
 # Initialize Groq LLM (if API key is present)
@@ -266,6 +267,7 @@ async def process_pdf(
             
             docsearch = Chroma.from_texts(texts, embedding=embedding_model) 
             docs = docsearch.similarity_search(query, k=4)
+            del docsearch  # Explicitly delete the reference to free memory immediately after usage
             logger.info("Embeddings generated and documents searched")
             answer = llm_chain.run(
                 input_documents=[doc.page_content for doc in docs],
