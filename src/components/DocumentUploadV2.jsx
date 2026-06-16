@@ -246,7 +246,13 @@ const DocumentUploadV2 = () => {
           throw new Error(errorMsg);
         }
       }
-      console.log("OCR is needed : ");
+      toast({
+        title: language === "hi" ? "त्रुटि" : "Error",
+        description:
+          (language === "hi"
+            ? "दस्तावेज़ के विश्लेषण में समस्या आई OCR needed"
+            : "Problem analyzing document , OCR Needed , retrying"),
+      });
       if (isOcrNeeded) {
         clearInterval(progressInterval);
         setOcrStatus(language === "hi" ? "OCR इंजन शुरू किया जा रहा है..." : "Initializing OCR...");

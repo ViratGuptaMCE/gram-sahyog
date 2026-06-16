@@ -26,6 +26,9 @@ try:
 except Exception as e:
     SUPPORTED_LANGUAGES = ['en', 'hi', 'ur', 'pa', 'bn', 'gu', 'mr', 'ta', 'te', 'kn', 'ml', 'or', 'as', 'ne']
 import time
+# import fitz  
+# import pytesseract
+# from PIL import Image
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -293,50 +296,46 @@ def rank_lawyers(query: str, text_context: str = "", generated_answer: str = "",
     return lawyers_list
 
 def extract_text_via_ocr(pdf_contents: bytes) -> str:
-    try:
-        import fitz  
-        import pytesseract
-        from PIL import Image
-        import io
+    raise RuntimeError("Required python libraries for OCR (pymupdf, pytesseract) are not installed on the server.")
+    # try:    
+        # if os.name == 'posix':
+        #     for path in ['/usr/bin/tesseract', '/usr/local/bin/tesseract']:
+        #         if os.path.exists(path):
+        #             pytesseract.pytesseract.tesseract_cmd = path
+        #             break
         
-        if os.name == 'posix':
-            for path in ['/usr/bin/tesseract', '/usr/local/bin/tesseract']:
-                if os.path.exists(path):
-                    pytesseract.pytesseract.tesseract_cmd = path
-                    break
+        # logger.info("Attempting OCR on PDF pages...")
+        # doc = fitz.open(stream=pdf_contents, filetype="pdf")
+        # ocr_text = []
         
-        logger.info("Attempting OCR on PDF pages...")
-        doc = fitz.open(stream=pdf_contents, filetype="pdf")
-        ocr_text = []
-        
-        max_pages = min(len(doc), 10)
-        for page_num in range(max_pages):
-            logger.info(f"Performing OCR on page {page_num + 1}/{max_pages}")
-            page = doc.load_page(page_num)
-            pix = page.get_pixmap(dpi=100)
-            img_data = pix.tobytes("png")
-            img = Image.open(io.BytesIO(img_data))
+        # max_pages = min(len(doc), 10)
+        # for page_num in range(max_pages):
+        #     logger.info(f"Performing OCR on page {page_num + 1}/{max_pages}")
+        #     page = doc.load_page(page_num)
+        #     pix = page.get_pixmap(dpi=100)
+        #     img_data = pix.tobytes("png")
+        #     img = Image.open(io.BytesIO(img_data))
             
-            page_text = pytesseract.image_to_string(img, lang="hin+eng")
-            ocr_text.append(page_text)
-            del pix, img_data, img
+        #     page_text = pytesseract.image_to_string(img, lang="hin+eng")
+        #     ocr_text.append(page_text)
+        #     del pix, img_data, img
             
-        full_text = "\n".join(ocr_text)
-        return full_text
-    except ImportError as e:
-        logger.exception("OCR libraries missing")
-        raise RuntimeError("Required python libraries for OCR (pymupdf, pytesseract) are not installed on the server.")
-    except Exception as e:
-        logger.exception("OCR process failed")
-        err_msg = str(e).lower()
-        if "tesseract" in err_msg or "not found" in err_msg or "path" in err_msg or "executable" in err_msg:
-            raise RuntimeError(
-                "Tesseract OCR engine is not installed or not found on this system. "
-                "Since you have deployed this backend on Render, please make sure your Web Service environment is set to 'Docker' "
-                "in the Render Dashboard. This will force Render to build the app using our Dockerfile (which installs Tesseract OCR "
-                "with English and Hindi packages natively)."
-            )
-        raise RuntimeError(f"Failed to perform OCR on PDF: {str(e)}")
+        # full_text = "\n".join(ocr_text)
+        # return full_text
+    # except ImportError as e:
+    #     logger.exception("OCR libraries missing")
+    #     raise RuntimeError("Required python libraries for OCR (pymupdf, pytesseract) are not installed on the server.")
+    # except Exception as e:
+    #     logger.exception("OCR process failed")
+    #     err_msg = str(e).lower()
+    #     if "tesseract" in err_msg or "not found" in err_msg or "path" in err_msg or "executable" in err_msg:
+    #         raise RuntimeError(
+    #             "Tesseract OCR engine is not installed or not found on this system. "
+    #             "Since you have deployed this backend on Render, please make sure your Web Service environment is set to 'Docker' "
+    #             "in the Render Dashboard. This will force Render to build the app using our Dockerfile (which installs Tesseract OCR "
+    #             "with English and Hindi packages natively)."
+    #         )
+    #     raise RuntimeError(f"Failed to perform OCR on PDF: {str(e)}")
 
 @app.post("/process_pdf/")
 async def process_pdf(
@@ -358,15 +357,19 @@ async def process_pdf(
         logger.info("File successfully read via PyMuPDF")
 
         if len(raw_text.strip()) < 100:
-            if extracted_text and len(extracted_text.strip()) >= 50:
+            if extracted_text :
+                if len(extracted_text.strip()) < 50:
+                    logger.info("Extracted text is empty or short.")
+                    raise HTTPException(status_code=400, detail=str("Extracted Text is too short."))
                 logger.info("Using client-side OCR text provided by frontend")
                 raw_text = extracted_text
             else:
-                logger.info("Extracted text is empty or short. Running safe OCR fallback...")
-                try:
-                    raw_text = extract_text_via_ocr(contents)
-                except RuntimeError as ocr_error:
-                    raise HTTPException(status_code=400, detail=str(ocr_error))
+                # logger.info("Extracted text is empty or short. Running safe OCR fallback...")
+                # try:
+                #     raw_text = extract_text_via_ocr(contents)
+                # except RuntimeError as ocr_error:
+                #     raise HTTPException(status_code=400, detail=str(ocr_error))
+                raise HTTPException(status_code=400, detail=str("We need OCR from client side tesseract , as pytesseract is not available."))
 
         if not raw_text.strip():
             raise HTTPException(status_code=400, detail="PDF contains no readable text")
