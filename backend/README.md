@@ -23,12 +23,13 @@ This is the backend API service for **Gram Sahyog Niti Marg** (Rural Legal Help 
 
 4. **Context-Aware Lawyer Recommendations**:
    - Dynamically parses chat queries for lawyer-related intent (e.g. keywords like `"lawyer"`, `"advocate"`, `"वकील"`, etc.).
-   - If triggered, performs semantic similarity searches on the lawyer Chroma DB index and automatically injects matching profiles into the system prompt context.
+   - If triggered, performs semantic similarity searches on the lawyer FAISS index and automatically injects matching profiles into the system prompt context.
 
-5. **Optimized PDF Analysis (RAG)**:
-   - Evaluates uploaded PDF character size.
-   - For small documents (< 40,000 characters), it bypasses vector split/indexing for fast, direct context delivery.
-   - For large documents, it chunk-splits, indices them locally using HuggingFace embeddings inside Chroma DB, and retrieves relevant snippets to compile RAG explanations.
+5. **Optimized PDF Analysis (RAG) & OCR Fallback**:
+   - Bypasses vector indexing for small documents (< 40,000 characters) for faster response times.
+   - Chunk-splits and indexes large documents using a lightweight `FAISS` vector index on CPU for low-latency similarity queries.
+   - Automatically detects unreadable/scanned PDFs and runs a server-side Tesseract OCR fallback using PyMuPDF and `pytesseract` (extracts up to 10 pages in Hindi and English).
+   - Integrates with the frontend client-side OCR fallback: accepts pre-extracted text using the `extracted_text` Form-Data parameter if the server lacks native Tesseract binaries.
 
 ---
 
@@ -36,11 +37,12 @@ This is the backend API service for **Gram Sahyog Niti Marg** (Rural Legal Help 
 
 - **Framework**: [FastAPI](https://fastapi.tiangolo.com/) (Python web framework)
 - **Vector Embeddings**: [HuggingFace sentence-transformers](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) (`all-MiniLM-L6-v2`) running locally on CPU.
-- **Vector DB**: [Chroma DB](https://www.trychroma.com/) (`langchain-chroma`)
+- **Vector DB**: [FAISS](https://github.com/facebookresearch/faiss) (`faiss-cpu`) - a lightweight, fast local vector library that runs entirely on CPU without database locks or heavy container overhead.
 - **Large Language Model**: [Groq Cloud API](https://groq.com/) with LangChain (`langchain-groq` utilizing `llama-3.3-70b-versatile`)
-- **Text Extraction**: `PyPDF2` (reads uploaded PDFs)
+- **Text Extraction & PDF Reader**: [PyMuPDF](https://pymupdf.readthedocs.io/en/latest/) (`pymupdf`/`fitz`) - replacing PyPDF2 for reduced memory consumption and better layout preservation.
+- **OCR Engine**: [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) via `pytesseract` (for server-side fallback).
 - **Data Handling**: `pandas` (manages the lawyer directory CSV)
-- **Translation**: `googletrans` (asynchronous translation package)
+- **Translation**: [deep-translator](https://github.com/nidhaloff/deep-translator) (replaces `googletrans` for robust translation)
 
 ---
 
@@ -50,7 +52,7 @@ This is the backend API service for **Gram Sahyog Niti Marg** (Rural Legal Help 
 backend/
 ├── main.py                    # Main FastAPI application, endpoints & rate limiter
 ├── lawyer.csv                 # Advocate directory database
-├── lawyer_chroma_index/       # Local Chroma DB folder (auto-generated)
+├── lawyer_faiss_index/        # Local FAISS index folder (auto-generated)
 ├── requirements.txt           # Python dependency declarations
 ├── .env                       # Backend environment variables
 └── README.md                  # This documentation file
@@ -108,6 +110,7 @@ The server will start at **`http://localhost:8000`**.
   * `file`: (Binary PDF File)
   * `query`: (String) e.g., "What are the rules regarding property partition?"
   * `translation_language`: (Optional String) e.g., `"hi"`
+  * `extracted_text`: (Optional String) Text extracted via client-side OCR fallback.
 * **Response**:
   ```json
   {

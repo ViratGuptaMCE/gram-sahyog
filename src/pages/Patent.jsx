@@ -110,7 +110,6 @@ const Patent = () => {
 
   return (
     <div className="min-h-screen bg-[#F0F4F8] relative overflow-hidden selection:bg-[#0B2545]/20 selection:text-[#111827]">
-      {/* Neoclassical architectural grid accents */}
       <div className="absolute left-[8%] top-0 bottom-0 w-[1px] bg-[#0B2545]/[0.03] pointer-events-none"></div>
       <div className="absolute right-[8%] top-0 bottom-0 w-[1px] bg-[#0B2545]/[0.03] pointer-events-none"></div>
 

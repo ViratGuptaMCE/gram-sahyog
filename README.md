@@ -12,7 +12,9 @@
    - **Hindi Speech**: Powered by a custom sequential segment player utilizing the Google Translate TTS engine, ensuring high-quality, natural-sounding audio even when native browser voices fail.
    - **English Speech**: Utilizes standard browser speech synthesis with a custom Google TTS fallback.
    - **Formatting Filter**: Pre-processes text to automatically strip layout markers (`*`, `#`, etc.) before speech generation to ensure clean voice output.
-4. **Interactive PDF Document Analyzer (RAG)**: Upload legal agreements or land records, ask questions, and receive localized legal explanations. Features a dual-mode engine: direct context forwarding for fast analysis of smaller files and Chroma-based similarity search for larger documents.
+4. **Interactive PDF Document Analyzer (RAG) with Client-Side OCR**: 
+   - **Dual-Mode Engine**: Features direct context forwarding for fast analysis of smaller files (< 40,000 characters) and FAISS-based similarity search for larger documents.
+   - **Client-Side OCR Fallback**: If the server fails to read text from a PDF (e.g. scanned images) or lacks Tesseract OCR binaries, the frontend automatically initiates client-side OCR using `pdfjs-dist` and `tesseract.js` (extracting both English and Hindi text) and resubmits the extracted text for seamless processing.
 5. **Fuzzy & Synonym-Tolerant Lawyer Finder**: 
    - Searches are resolved using a **Hybrid Location Layer** that queries a Llama-3 model on Groq and falls back to a custom Levenshtein string distance algorithm (threshold $\ge 75\%$) and a city synonym dictionary.
    - Handles typos (e.g. `"Mumbay"` ➔ `"Mumbai"`) and queries for states containing cities in the database (e.g. `"Bihar"` ➔ `"Patna"`).
@@ -32,9 +34,10 @@
 - **Component Library**: [Radix UI](https://www.radix-ui.com/) & [Shadcn UI](https://ui.shadcn.com/) (using core components like Button, Card, Select, Badge, Progress, Toaster, Sonner, and Tooltip).
 - **Icons**: [Lucide React](https://lucide.dev/)
 - **State Management & Queries**: [TanStack Query v5](https://tanstack.com/query) (`@tanstack/react-query`)
+- **Client-side OCR**: [Tesseract.js](https://tesseract.projectnaptha.com/) & [PDF.js](https://mozilla.github.io/pdf.js/) for in-browser text extraction.
 
 ### Backend Architecture
-- A Python FastAPI server handling text extraction, embedding generation (`sentence-transformers/all-MiniLM-L6-v2`), vector similarity queries (`Chroma DB`), Groq LLM logic (`llama-3.3-70b-versatile`), and machine translation. See [backend/README.md](file:///C:/Gram/gram-sahyog-niti-marg/backend/README.md) for details.
+- A Python FastAPI server handling text extraction, embedding generation (`sentence-transformers/all-MiniLM-L6-v2`), vector similarity queries (`FAISS`), Groq LLM logic (`llama-3.3-70b-versatile`), and machine translation. See [backend/README.md](file:///C:/Gram/gram-sahyog-niti-marg/backend/README.md) for details.
 
 ---
 
@@ -55,7 +58,7 @@ gram-sahyog-niti-marg/
 │   │   ├── Footer.jsx
 │   │   └── Profile.jsx
 │   ├── hooks/                 # Custom React hooks (use-toast, etc.)
-│   ├── lib/                   # Utility helpers (utils.ts)
+│   ├── lib/                   # Utility helpers (utils.ts, ocr.js)
 │   ├── pages/                 # Main route pages (Index.jsx, Patent.jsx, NotFound.jsx)
 │   ├── App.jsx                # Main App entry routes setup
 │   └── main.jsx               # React DOM rendering root

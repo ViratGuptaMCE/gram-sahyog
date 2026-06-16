@@ -1,4 +1,3 @@
-// src/components/DocumentUploadV2.jsx
 import React, { useState, useEffect, useRef } from "react";
 import {
   Card,
@@ -16,28 +15,26 @@ import LawyerAvatar from "./LawyerAvatar";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL.replace(/\/$/, "") : "/api";
 
-// Helper to strip markdown symbols so the TTS engine reads clean text
 const stripMarkdownForSpeech = (text) => {
   if (!text) return "";
   return text
-    .replace(/\*\*?/g, "")            // Remove asterisks (* and **)
-    .replace(/#{1,6}\s+/g, "")        // Remove headers (#, ##, ###)
-    .replace(/^\s*[-*+]\s+/gm, "")     // Remove list bullet characters
-    .replace(/^\s*\d+\.\s+/gm, "")     // Remove list numbers (e.g. 1.)
-    .replace(/[\/\\]/g, "")            // Remove slashes
-    .replace(/\n+/g, " ")             // Replace newlines with spaces for smooth speech
-    .replace(/\s+/g, " ")             // Clean up multi-spaces
+    .replace(/\*\*?/g, "")            
+    .replace(/#{1,6}\s+/g, "")        
+    .replace(/^\s*[-*+]\s+/gm, "")     
+    .replace(/^\s*\d+\.\s+/gm, "")     
+    .replace(/[\/\\]/g, "")           
+    .replace(/\n+/g, " ")             
+    .replace(/\s+/g, " ")             
     .trim();
 };
 
-// Robust line-by-line Markdown Parser
 const renderMarkdown = (text) => {
   if (!text) return null;
   
   const lines = text.split("\n");
   const elements = [];
   let currentList = [];
-  let currentListType = null; // 'ul' or 'ol'
+  let currentListType = null; 
 
   const flushList = (key) => {
     if (currentList.length > 0) {
@@ -148,21 +145,20 @@ const DocumentUploadV2 = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState("");
   const [progress, setProgress] = useState(0);
+  const [ocrStatus, setOcrStatus] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const { toast } = useToast();
   const [recomLawyer, setRecomLawyer] = useState(null);
   const [language, setLanguage] = useState(() => localStorage.getItem("language") || "hi");
-  const [originalAnalysis, setOriginalAnalysis] = useState(""); // Store original English analysis for toggling
+  const [originalAnalysis, setOriginalAnalysis] = useState(""); 
   const audioPlayerRef = useRef(null);
 
-  // Sync with global language toggles & preload voices
   useEffect(() => {
     const handleLangChange = () => {
       setLanguage(localStorage.getItem("language") || "hi");
     };
     window.addEventListener("languageChange", handleLangChange);
 
-    // Preload speechSynthesis voices in background
     if (typeof window !== "undefined" && window.speechSynthesis) {
       window.speechSynthesis.getVoices();
       if (window.speechSynthesis.onvoiceschanged !== undefined) {
@@ -199,6 +195,7 @@ const DocumentUploadV2 = () => {
 
     setIsAnalyzing(true);
     setProgress(0);
+    setOcrStatus("");
 
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
@@ -224,30 +221,124 @@ const DocumentUploadV2 = () => {
         body: formData,
       });
 
+      let isOcrNeeded = false;
+      let errorMsg = "";
+
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        try {
+          const errData = await response.json();
+          errorMsg = errData.detail || "";
+        } catch (e) {
+          errorMsg = `HTTP error! status: ${response.status}`;
+        }
+
+        const lowerMsg = errorMsg.toLowerCase();
+        if (
+          lowerMsg.includes("tesseract") ||
+          lowerMsg.includes("ocr") ||
+          lowerMsg.includes("not installed") ||
+          lowerMsg.includes("not found") ||
+          lowerMsg.includes("no readable text") ||
+          lowerMsg.includes("executable")
+        ) {
+          isOcrNeeded = true;
+        } else {
+          throw new Error(errorMsg);
+        }
       }
 
-      const data = await response.json();
+      if (isOcrNeeded) {
+        clearInterval(progressInterval);
+        setOcrStatus(language === "hi" ? "OCR इंजन शुरू किया जा रहा है..." : "Initializing OCR...");
+        setProgress(5);
 
-      setProgress(100);
-      setTimeout(() => {
-        setAnalysis(data.answer);
-        setOriginalAnalysis(data.answer);
-        setRecomLawyer(data.lawyer);
-        setIsAnalyzing(false);
-        toast({
-          title: language === "hi" ? "विश्लेषण पूर्ण" : "Analysis Complete",
-          description: language === "hi" ? "दस्तावेज़ का विश्लेषण सफलतापूर्वक कर दिया गया है" : "Document has been analyzed successfully",
+        let extractedText = "";
+        try {
+          const { performClientSideOCR } = await import("../lib/ocr");
+          extractedText = await performClientSideOCR(file, (page, total) => {
+            setOcrStatus(
+              language === "hi"
+                ? `OCR विश्लेषण: पृष्ठ ${page} / ${total}...`
+                : `OCR: Page ${page} / ${total}...`
+            );
+            setProgress(Math.round((page / total) * 90) + 5);
+          });
+        } catch (ocrErr) {
+          console.error("OCR failed:", ocrErr);
+          throw new Error(
+            language === "hi"
+              ? "क्लाइंट-साइड OCR विफल रहा। कृपया सुनिश्चित करें कि फ़ाइल सही है।"
+              : "OCR failed. Please ensure the file is valid and readable."
+          );
+        }
+
+        setOcrStatus(language === "hi" ? "अंतिम विश्लेषण चल रहा है..." : "Performing final analysis...");
+        setProgress(95);
+
+        const retryFormData = new FormData();
+        retryFormData.append("file", file);
+        retryFormData.append(
+          "query",
+          "Analyze this legal document and provide key points, potential issues, and recommendations in clear bullet points."
+        );
+        retryFormData.append("translation_language", language);
+        retryFormData.append("extracted_text", extractedText);
+
+        const retryResponse = await fetch(`${API_BASE}/process_pdf/`, {
+          method: "POST",
+          body: retryFormData,
         });
-      }, 400);
+
+        if (!retryResponse.ok) {
+          let retryErrorMsg = "";
+          try {
+            const retryErrData = await retryResponse.json();
+            retryErrorMsg = retryErrData.detail || "";
+          } catch (e) {
+            retryErrorMsg = `HTTP error! status: ${retryResponse.status}`;
+          }
+          throw new Error(retryErrorMsg);
+        }
+
+        const data = await retryResponse.json();
+        
+        setProgress(100);
+        setOcrStatus("");
+        setTimeout(() => {
+          setAnalysis(data.answer);
+          setOriginalAnalysis(data.answer);
+          setRecomLawyer(data.lawyer);
+          setIsAnalyzing(false);
+          toast({
+            title: language === "hi" ? "विश्लेषण पूर्ण" : "Analysis Complete",
+            description: language === "hi" ? "दस्तावेज़ का विश्लेषण सफलतापूर्वक कर दिया गया है" : "Document has been analyzed successfully",
+          });
+        }, 400);
+
+      } else {
+        const data = await response.json();
+
+        setProgress(100);
+        setOcrStatus("");
+        setTimeout(() => {
+          setAnalysis(data.answer);
+          setOriginalAnalysis(data.answer);
+          setRecomLawyer(data.lawyer);
+          setIsAnalyzing(false);
+          toast({
+            title: language === "hi" ? "विश्लेषण पूर्ण" : "Analysis Complete",
+            description: language === "hi" ? "दस्तावेज़ का विश्लेषण सफलतापूर्वक कर दिया गया है" : "Document has been analyzed successfully",
+          });
+        }, 400);
+      }
     } catch (error) {
       console.error("Error analyzing document:", error);
       setIsAnalyzing(false);
+      setOcrStatus("");
       clearInterval(progressInterval);
       toast({
         title: language === "hi" ? "त्रुटि" : "Error",
-        description: language === "hi" ? "दस्तावेज़ के विश्लेषण में समस्या आई" : "Problem analyzing document",
+        description: error.message || (language === "hi" ? "दस्तावेज़ के विश्लेषण में समस्या आई" : "Problem analyzing document"),
         variant: "destructive",
       });
     }
@@ -297,7 +388,6 @@ const DocumentUploadV2 = () => {
     }
   };
 
-  // HTML Audio based sequential speech player using Google Translate TTS (CORS-friendly, natural audio)
   const playGoogleTTS = (text, lang, showToast = true) => {
     setIsSpeaking(true);
     if (showToast) {
@@ -309,7 +399,6 @@ const DocumentUploadV2 = () => {
 
     const cleanText = stripMarkdownForSpeech(text);
     
-    // Chunking text into <= 140 character segments safely (max limit is 200)
     const chunks = [];
     const maxChunkSize = 140;
     let remainingText = cleanText;
@@ -430,7 +519,6 @@ const DocumentUploadV2 = () => {
     const cleanText = stripMarkdownForSpeech(analysis);
     window.speechSynthesis.cancel();
 
-    // Check if browser has native speech synthesis voices loaded for the selected language
     const currentVoices = window.speechSynthesis.getVoices();
     const targetLang = language === "hi" ? "hi-IN" : "en-US";
     
@@ -467,13 +555,11 @@ const DocumentUploadV2 = () => {
 
       utterance.onerror = (e) => {
         console.error("SpeechSynthesis error, falling back to Google Translate TTS:", e);
-        // Fallback to Google Translate TTS, but skip the duplicate toast
         playGoogleTTS(analysis, language, false);
       };
 
       window.speechSynthesis.speak(utterance);
     } else {
-      // Fallback directly to Google TTS if native voice is not installed
       playGoogleTTS(analysis, language, true);
     }
   };
@@ -578,8 +664,12 @@ const DocumentUploadV2 = () => {
             {isAnalyzing && (
               <div className="space-y-4 pt-4 border-t border-[#111827]/15 mt-4">
                 <LegalLoader 
-                  message={language === "hi" ? "दस्तावेज़ का विश्लेषण जारी है..." : "Analyzing Document..."} 
-                  subMessage={language === "hi" ? "हम नियमों और प्रावधानों का मिलान कर रहे हैं..." : "Verifying sections, regulations, and bylaws..."} 
+                  message={ocrStatus || (language === "hi" ? "दस्तावेज़ का विश्लेषण जारी है..." : "Analyzing Document...")} 
+                  subMessage={
+                    ocrStatus 
+                      ? (language === "hi" ? "क्लाइंट-साइड OCR द्वारा दस्तावेज़ के पन्नों से पाठ निकाला जा रहा है..." : "Extracting text from pages using OCR...")
+                      : (language === "hi" ? "हम नियमों और प्रावधानों का मिलान कर रहे हैं..." : "Verifying sections, regulations, and bylaws...")
+                  } 
                 />
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs font-bold text-[#0B2545] uppercase tracking-wider">

@@ -1,7 +1,6 @@
 fastapi
 uvicorn
 pydantic
-PyPDF2
 pandas
 deep-translator
 groq

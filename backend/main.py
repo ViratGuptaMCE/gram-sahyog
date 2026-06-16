@@ -12,8 +12,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from PyPDF2 import PdfReader
-
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEndpointEmbeddings
@@ -29,9 +27,6 @@ except Exception as e:
     SUPPORTED_LANGUAGES = ['en', 'hi', 'ur', 'pa', 'bn', 'gu', 'mr', 'ta', 'te', 'kn', 'ml', 'or', 'as', 'ne']
 import time
 
-# ----------------------------------------------------------------------
-# Setup
-# ----------------------------------------------------------------------
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -40,21 +35,17 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
     logger.warning("GROQ_API_KEY environment variable not set.")
 
-# ----------------------------------------------------------------------
-# Rate Limiting Engine
-# ----------------------------------------------------------------------
 class TokenRateLimiter:
     def __init__(self, requests_limit: int, window_seconds: int):
         self.requests_limit = requests_limit
         self.window_seconds = window_seconds
-        self.clients = {}  # ip -> list of timestamps
+        self.clients = {}  
 
     def is_rate_limited(self, ip: str) -> bool:
         current_time = time.time()
         if ip not in self.clients:
             self.clients[ip] = []
         
-        # Keep only timestamps within sliding window
         self.clients[ip] = [t for t in self.clients[ip] if current_time - t < self.window_seconds]
         
         if len(self.clients[ip]) >= self.requests_limit:
@@ -63,7 +54,6 @@ class TokenRateLimiter:
         self.clients[ip].append(current_time)
         return False
 
-# Limit to 10 requests per min for Q&A, and 5 requests per min for document uploads
 qa_limiter = TokenRateLimiter(requests_limit=10, window_seconds=60)
 pdf_limiter = TokenRateLimiter(requests_limit=5, window_seconds=60)
 
@@ -76,7 +66,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize HuggingFace Endpoint Embeddings (runs on HuggingFace cloud, super lightweight, uses < 10MB RAM)
 logger.info("Initializing HuggingFace Endpoint Embeddings...")
 hf_token = os.getenv("HUGGINGFACE_TOKEN") or os.getenv("HUGGINGFACEHUB_API_TOKEN") or os.getenv("HF_TOKEN")
 embedding_model = HuggingFaceEndpointEmbeddings(
@@ -84,7 +73,6 @@ embedding_model = HuggingFaceEndpointEmbeddings(
     huggingfacehub_api_token=hf_token
 )
 
-# Initialize Groq LLM (if API key is present)
 llm = None
 if GROQ_API_KEY:
     logger.info("Initializing Groq LLM...")
@@ -96,11 +84,9 @@ if GROQ_API_KEY:
 else:
     logger.warning("Groq LLM is not initialized because GROQ_API_KEY is missing.")
 
-# Load lawyer database from CSV
 lawyer_df = pd.read_csv("lawyer.csv")
 logger.info("Lawyer database loaded from CSV")
 
-# Initialize / load lawyer FAISS index
 LAWYER_INDEX_PATH = "lawyer_faiss_index"
 if os.path.exists(LAWYER_INDEX_PATH):
     logger.info("Loading existing lawyer FAISS index from disk...")
@@ -171,14 +157,148 @@ Answer should be well in points and proper format.
             logger.error(f"Groq LLM Error: {e}")
             raise HTTPException(status_code=500, detail="Failed to answer question")
 
+def extract_case_details_with_llm(query: str, text_context: str, generated_answer: str, existing_cities: List[str], existing_specs: List[str], llm_instance) -> dict:
+    if not llm_instance:
+        return {"specialization": "Unknown", "city": "Unknown"}
+        
+    prompt = f"""
+You are a legal triage assistant. Your task is to analyze a user's query, some context from a legal document they uploaded, and the generated legal answer, and identify:
+1. The most appropriate legal specialization required. Choose ONLY from this list:
+{existing_specs}
+
+2. The location (city) relevant to this legal matter. Choose ONLY from this list:
+{existing_cities}
+
+User Query: "{query}"
+Document context snippet: "{text_context[:2000]}"
+Generated answer snippet: "{generated_answer[:2000]}"
+
+Instructions:
+- Map the location to a city in the list. If a state (e.g. "Bihar") is mentioned, map it to the city/cities belonging to that state from the list (e.g. "Patna").
+- If the location does not map to any city in the list, or is not mentioned anywhere, return "Unknown".
+- If the specialization is not clear, map it to the closest match (e.g., land, rent, eviction, registration, mutation map to "Property"; general contract, agreement disputes map to "Civil"; theft, fraud, assault map to "Criminal"; divorce, inheritance, child custody map to "Family"; income tax, GST map to "Tax"; product defects, service complaints map to "Consumer Court"). If it doesn't match any, return "Unknown".
+
+Return your answer as a raw JSON object with keys "specialization" and "city". Do not include any markdown, code blocks, explanation, or additional text.
+Example response:
+{{"specialization": "Property", "city": "Delhi"}}
+"""
+    try:
+        response = llm_instance.invoke(prompt)
+        text = response.content.strip()
+        # Clean up markdown formatting if the LLM outputted them
+        if "```json" in text:
+            text = text.split("```json")[1].split("```")[0].strip()
+        elif "```" in text:
+            text = text.split("```")[1].split("```")[0].strip()
+            
+        data = json.loads(text)
+        logger.info(f"LLM extracted case details: {data}")
+        return data
+    except Exception as e:
+        logger.error(f"Error extracting case details: {e}")
+        # Manual fallback parsing
+        result = {"specialization": "Unknown", "city": "Unknown"}
+        try:
+            text_lower = response.content.lower()
+            for city in existing_cities:
+                if city.lower() in text_lower:
+                    result["city"] = city
+                    break
+            for spec in existing_specs:
+                if spec.lower() in text_lower:
+                    result["specialization"] = spec
+                    break
+        except Exception:
+            pass
+        return result
+
+def rank_lawyers(query: str, text_context: str = "", generated_answer: str = "", k: int = 3) -> List[dict]:
+    existing_cities = [str(c).strip() for c in lawyer_df['City'].dropna().unique()]
+    existing_specs = [str(s).strip() for s in lawyer_df['Specialization'].dropna().unique()]
+    
+    # Extract case details using LLM
+    details = extract_case_details_with_llm(query, text_context, generated_answer, existing_cities, existing_specs, llm)
+    inferred_spec = details.get("specialization", "Unknown")
+    inferred_city = details.get("city", "Unknown")
+    
+    logger.info(f"Ranking lawyers. Inferred Spec: {inferred_spec}, Inferred City: {inferred_city}")
+    
+    df = lawyer_df.copy()
+    
+    # Base relevance score
+    relevance_scores = []
+    for idx, row in df.iterrows():
+        score = 0
+        row_spec = str(row.get('Specialization', '')).strip()
+        row_city = str(row.get('City', '')).strip()
+        
+        # City match (Highest priority)
+        if inferred_city != "Unknown" and row_city.lower() == inferred_city.lower():
+            score += 200
+            
+        # Specialization match
+        if inferred_spec != "Unknown":
+            if row_spec.lower() == inferred_spec.lower():
+                score += 100
+            # Related domains
+            elif inferred_spec.lower() == "property" and row_spec.lower() == "civil":
+                score += 30
+            elif inferred_spec.lower() == "civil" and row_spec.lower() in ["property", "family", "consumer court"]:
+                score += 30
+                
+        relevance_scores.append(score)
+        
+    df['Relevance_Score'] = relevance_scores
+    
+    # Semantic Search Score
+    semantic_query = ""
+    if inferred_spec != "Unknown":
+        semantic_query += f"Specialization: {inferred_spec} "
+    if inferred_city != "Unknown":
+        semantic_query += f"City: {inferred_city} "
+    semantic_query += query
+    
+    try:
+        matched_docs = lawyer_index.similarity_search(semantic_query, k=max(k * 3, 15))
+        semantic_names = {}
+        for rank_idx, doc in enumerate(matched_docs):
+            name = doc.metadata.get("name")
+            if name:
+                semantic_names[name] = max(50 - (rank_idx * 3), 10)
+    except Exception as e:
+        logger.error(f"Semantic search failed during lawyer ranking: {e}")
+        semantic_names = {}
+        
+    df['Semantic_Score'] = df['Name'].map(semantic_names).fillna(0)
+    
+    # Experience and Rating
+    if 'Experience_Years' not in df.columns:
+        df['Experience_Years'] = df['Experience'].str.extract(r'(\d+)').astype(float).fillna(0).astype(int)
+        
+    df['Total_Score'] = (
+        df['Relevance_Score'] + 
+        df['Semantic_Score'] + 
+        (df['Rating'].fillna(4.0) * 10) + 
+        (df['Experience_Years'] * 0.5)
+    )
+    
+    # Sort by total score, then rating, then experience
+    ranked_df = df.sort_values(
+        by=['Total_Score', 'Rating', 'Experience_Years'], 
+        ascending=[False, False, False]
+    )
+    
+    # Convert to list of dicts
+    lawyers_list = json.loads(ranked_df.head(k).to_json(orient='records'))
+    return lawyers_list
+
 def extract_text_via_ocr(pdf_contents: bytes) -> str:
     try:
-        import fitz  # PyMuPDF
+        import fitz  
         import pytesseract
         from PIL import Image
         import io
         
-        # Explicitly configure tesseract command path on Linux if present
         if os.name == 'posix':
             for path in ['/usr/bin/tesseract', '/usr/local/bin/tesseract']:
                 if os.path.exists(path):
@@ -189,20 +309,16 @@ def extract_text_via_ocr(pdf_contents: bytes) -> str:
         doc = fitz.open(stream=pdf_contents, filetype="pdf")
         ocr_text = []
         
-        # Limit to 10 pages for performance and timeout safety on free tier
         max_pages = min(len(doc), 10)
         for page_num in range(max_pages):
             logger.info(f"Performing OCR on page {page_num + 1}/{max_pages}")
             page = doc.load_page(page_num)
-            # Dropping DPI to 100 drastically reduces memory usage while preserving text accuracy
             pix = page.get_pixmap(dpi=100)
             img_data = pix.tobytes("png")
             img = Image.open(io.BytesIO(img_data))
             
-            # Use both English and Hindi for Tesseract OCR to support our bilingual content
             page_text = pytesseract.image_to_string(img, lang="hin+eng")
             ocr_text.append(page_text)
-            # Clean up image variables explicitly in every loop cycle
             del pix, img_data, img
             
         full_text = "\n".join(ocr_text)
@@ -227,28 +343,30 @@ async def process_pdf(
     request: Request,
     file: UploadFile = File(...),
     query: str = Form(...),
-    translation_language: str = Form(None)
+    translation_language: str = Form(None),
+    extracted_text: str = Form(None)
 ):
-    # Check PDF rate limit
     ip = request.client.host
     if pdf_limiter.is_rate_limited(ip):
         raise HTTPException(status_code=429, detail="Too many PDF uploads. Try again soon.")
         
     try:
         contents = await file.read()
-        # Streamline: Switch to PyMuPDF (fitz) for reading raw text too—it uses way less RAM than PyPDF2
         import fitz
         doc = fitz.open(stream=contents, filetype="pdf")
         raw_text = "".join([page.get_text() or "" for page in doc])
         logger.info("File successfully read via PyMuPDF")
 
-        # Fallback to OCR if extracted text is empty or too short (e.g. less than 100 characters)
         if len(raw_text.strip()) < 100:
-            logger.info("Extracted text is empty or short. Running safe OCR fallback...")
-            try:
-                raw_text = extract_text_via_ocr(contents)
-            except RuntimeError as ocr_error:
-                raise HTTPException(status_code=400, detail=str(ocr_error))
+            if extracted_text and len(extracted_text.strip()) >= 50:
+                logger.info("Using client-side OCR text provided by frontend")
+                raw_text = extracted_text
+            else:
+                logger.info("Extracted text is empty or short. Running safe OCR fallback...")
+                try:
+                    raw_text = extract_text_via_ocr(contents)
+                except RuntimeError as ocr_error:
+                    raise HTTPException(status_code=400, detail=str(ocr_error))
 
         if not raw_text.strip():
             raise HTTPException(status_code=400, detail="PDF contains no readable text")
@@ -271,25 +389,13 @@ async def process_pdf(
                 input_documents=[doc.page_content for doc in docs],
                 question=query
             )
-            # Explicit cleanup block
             del docsearch, docs
-            gc.collect() # Force Python to clear memory allocations immediately
+            gc.collect()
 
         logger.info("Answer generated successfully")
 
-        # Local Database Search Block
-        df = lawyer_df.copy()
-        search_query = query if query.strip() else answer[:500]
-        matched_docs = lawyer_index.similarity_search(search_query, k=3) # Swapped k=5 to k=3 to minimize slice overhead
-        matched_names = [doc.metadata.get("name") for doc in matched_docs if doc.metadata.get("name")]
-        
-        if 'Experience_Years' not in df.columns:
-            df['Experience_Years'] = df['Experience'].str.extract(r'(\d+)').astype(float).fillna(0).astype(int)
-        matched_df = df[df['Name'].isin(matched_names)]
-        if matched_df.empty:
-            matched_df = df
-        matched_df = matched_df.sort_values(by=['Rating', 'Experience_Years'], ascending=[False, False])
-        best_lawyer = json.loads(matched_df.iloc[0].to_json())
+        best_lawyers = rank_lawyers(query=query, text_context=raw_text, generated_answer=answer, k=1)
+        best_lawyer = best_lawyers[0] if best_lawyers else None
 
         return JSONResponse(content={"answer": answer, "lawyer": best_lawyer})
 
@@ -300,9 +406,6 @@ async def process_pdf(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ----------------------------------------------------------------------
-# City Name Resolution Layer (Synonyms & Typo Fuzzy Matching)
-# ----------------------------------------------------------------------
 CITY_SYNONYMS = {
     "bangalore": "Bengaluru",
     "bengaluru": "Bengaluru",
@@ -354,21 +457,17 @@ def resolve_city_name(user_input: str, existing_cities: list) -> str:
     if not cleaned_input:
         return ""
 
-    # 1. Match against known synonyms
     if cleaned_input in CITY_SYNONYMS:
         synonym_resolved = CITY_SYNONYMS[cleaned_input]
-        # Verify if synonym city is in database
         for city in existing_cities:
             if city.strip().lower() == synonym_resolved.lower():
                 return city
 
-    # 2. Check simple substring containment
     for city in existing_cities:
         city_lower = city.strip().lower()
         if cleaned_input == city_lower or cleaned_input in city_lower or city_lower in cleaned_input:
             return city
 
-    # 3. Levenshtein fuzzy string distance matching
     best_match = None
     best_ratio = 0.0
     for city in existing_cities:
@@ -382,11 +481,9 @@ def resolve_city_name(user_input: str, existing_cities: list) -> str:
             best_ratio = ratio
             best_match = city
 
-    # Accept if similarity ratio >= 75%
     if best_ratio >= 0.75:
         return best_match
 
-    # Fallback to standard capitalized form
     return user_input.strip().title()
 
 
@@ -396,7 +493,6 @@ def resolve_city_name_with_llm(user_input: str, existing_cities: list, llm_insta
         return ""
 
     if not llm_instance:
-        # Fall back to rule-based matching if LLM is not initialized (no API key)
         return resolve_city_name(user_input, existing_cities)
 
     cities_str = ", ".join(existing_cities)
@@ -444,10 +540,8 @@ async def get_lawyers(
     try:
         domain = domain.strip().title()
         
-        # Get unique cities list from lawyer dataset
         existing_cities = [str(c).strip() for c in lawyer_df['City'].dropna().unique()]
         
-        # Resolve city using LLM (with fallback to synonyms and fuzzy matching)
         resolved_location = resolve_city_name_with_llm(location, existing_cities, llm)
         logger.info(f"Resolved search city '{location}' to database city name '{resolved_location}'")
         
@@ -483,7 +577,6 @@ async def translate_text(request: TranslationRequest):
         if request.target_lang not in SUPPORTED_LANGUAGES:
             raise HTTPException(status_code=400, detail="Unsupported language code.")
         
-        # deep-translator performs stable translation synchronously
         translated_text = GoogleTranslator(source='auto', target=request.target_lang).translate(request.text)
         
         return {
@@ -505,41 +598,36 @@ SESSION_HISTORIES = {}
 
 @app.post("/getanswer")
 async def get_answer(request: Request, body: QuestionRequest):
-    # Check rate limit
     ip = request.client.host
     if qa_limiter.is_rate_limited(ip):
         raise HTTPException(status_code=429, detail="Too many requests. Please try again in a minute.")
         
     try:
-        # Check if the query is asking about finding/recommending advocates/lawyers
+        if body.session_id not in SESSION_HISTORIES:
+            SESSION_HISTORIES[body.session_id] = []
+            
+        history = SESSION_HISTORIES[body.session_id]
+
         lawyer_keywords = ["lawyer", "advocate", "suggest", "find", "good", "recommend", "वकील", "अधिवक्ता", "सजेस्ट", "मदद", "असिस्ट", "काउंसल"]
         is_asking_for_lawyer = any(kw in body.question.lower() for kw in lawyer_keywords)
         
         lawyers_context = ""
         if is_asking_for_lawyer:
-            logger.info("User question triggers lawyer search. Querying FAISS...")
-            # Query the FAISS index for relevant advocates
-            matched_docs = lawyer_index.similarity_search(body.question, k=3)
+            logger.info("User question triggers lawyer search. Ranking lawyers...")
+            history_text = "\n".join([f"{msg['role']}: {msg['content']}" for msg in history[-4:]])
+            best_lawyers = rank_lawyers(query=body.question, text_context=history_text, generated_answer="", k=3)
             
-            # Format advocate profiles
             lawyer_profiles = []
-            for doc in matched_docs:
-                name = doc.metadata.get("name", "Unknown Advocate")
-                # Look up full details in lawyer_df
-                df_match = lawyer_df[lawyer_df['Name'] == name]
-                if not df_match.empty:
-                    row = df_match.iloc[0]
-                    profile = (
-                        f"- Name: {row.get('Name')}\n"
-                        f"  City: {row.get('City')}\n"
-                        f"  Location: {row.get('Location')}\n"
-                        f"  Specialization: {row.get('Specialization')}\n"
-                        f"  Experience: {row.get('Experience')}\n"
-                        f"  Rating: {row.get('Rating')}\n"
-                        f"  Description: {row.get('Description')}"
-                    )
-                else:
-                    profile = f"- Name: {name}\n  Details: {doc.page_content}"
+            for row in best_lawyers:
+                profile = (
+                    f"- Name: {row.get('Name')}\n"
+                    f"  City: {row.get('City')}\n"
+                    f"  Location: {row.get('Location')}\n"
+                    f"  Specialization: {row.get('Specialization')}\n"
+                    f"  Experience: {row.get('Experience')}\n"
+                    f"  Rating: {row.get('Rating')}\n"
+                    f"  Description: {row.get('Description')}"
+                )
                 lawyer_profiles.append(profile)
                 
             lawyers_context = "\n\n".join(lawyer_profiles)
@@ -554,22 +642,15 @@ Always prioritize simple, easy-to-understand explanations suitable for rural cit
 
 Be sure to mention their names, specialization, city, rating, and description when recommending them. If they match the location requested (e.g. Bihar / Patna), highlight that!
 """
-
-        if body.session_id not in SESSION_HISTORIES:
-            SESSION_HISTORIES[body.session_id] = []
-            
-        history = SESSION_HISTORIES[body.session_id]
         
         messages = [SystemMessage(content=system_prompt)]
         
-        # Append last 6 messages of history (3 turns)
         for msg in history[-6:]:
             if msg["role"] == "user":
                 messages.append(HumanMessage(content=msg["content"]))
             elif msg["role"] == "assistant":
                 messages.append(AIMessage(content=msg["content"]))
                 
-        # Append current question
         messages.append(HumanMessage(content=body.question))
         
         if not llm:
@@ -578,7 +659,6 @@ Be sure to mention their names, specialization, city, rating, and description wh
         response = llm.invoke(messages)
         answer = response.content
         
-        # Save to history
         history.append({"role": "user", "content": body.question})
         history.append({"role": "assistant", "content": answer})
         SESSION_HISTORIES[body.session_id] = history[-20:]

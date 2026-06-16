@@ -46,7 +46,6 @@ const CorporateManager = () => {
     { value: 'tax', labelEn: 'Tax Related', labelHi: 'कर संबंधी' }
   ];
 
-  // No mock tickets
 
   const submitQuery = async () => {
     if (!query.category || !query.company || !query.issue) {
@@ -139,7 +138,6 @@ const CorporateManager = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           
-          {/* Query Submission Form */}
           <Card className="border border-[#0B2545]/15 shadow-none rounded-none bg-transparent overflow-hidden p-0">
             <CardHeader className="pb-4 p-6">
               <CardTitle className="flex items-center space-x-3 text-lg font-sans font-bold text-[#111827]">
