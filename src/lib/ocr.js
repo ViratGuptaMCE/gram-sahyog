@@ -1,16 +1,14 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url
-).toString();
+const pdfjsVersion = pdfjsLib.version || '6.0.227';
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
 
 export const performClientSideOCR = async (file, onProgress) => {
   try {
     const arrayBuffer = await file.arrayBuffer();
     const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
     const pdf = await loadingTask.promise;
-    
+    console.log("Client Side OCR is called : ");
     // Process up to 10 pages to match backend limits and prevent browser timeouts
     const numPages = Math.min(pdf.numPages, 10);
     let combinedText = "";

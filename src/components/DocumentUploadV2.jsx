@@ -220,7 +220,7 @@ const DocumentUploadV2 = () => {
         method: "POST",
         body: formData,
       });
-
+      console.log("The Response is : ", response);
       let isOcrNeeded = false;
       let errorMsg = "";
 
@@ -231,7 +231,7 @@ const DocumentUploadV2 = () => {
         } catch (e) {
           errorMsg = `HTTP error! status: ${response.status}`;
         }
-
+        console.log("The Error Message that we got : - ", errorMsg);
         const lowerMsg = errorMsg.toLowerCase();
         if (
           lowerMsg.includes("tesseract") ||
@@ -246,7 +246,7 @@ const DocumentUploadV2 = () => {
           throw new Error(errorMsg);
         }
       }
-
+      console.log("OCR is needed : ");
       if (isOcrNeeded) {
         clearInterval(progressInterval);
         setOcrStatus(language === "hi" ? "OCR इंजन शुरू किया जा रहा है..." : "Initializing OCR...");
